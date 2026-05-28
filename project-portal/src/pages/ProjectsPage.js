@@ -4,7 +4,7 @@ import { supabase, STAGES, STAGE_COLORS } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { Plus, Search, AlertCircle, AlertTriangle, ChevronRight } from 'lucide-react'
 import { format, isPast, differenceInDays } from 'date-fns'
-import NewProjectModal from '../NewProjectModal'
+import NewProjectModal from '../components/NewProjectModal'
 
 export default function ProjectsPage() {
   const { profile } = useAuth()

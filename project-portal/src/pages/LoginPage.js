@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import logo from '../lib/logo'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
@@ -21,22 +22,13 @@ export default function LoginPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.brand}>
-          <div style={styles.logoMark}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <rect width="12" height="12" x="2" y="2" rx="2" fill="#534AB7"/>
-              <rect width="12" height="12" x="14" y="2" rx="2" fill="#AFA9EC" opacity="0.6"/>
-              <rect width="12" height="12" x="2" y="14" rx="2" fill="#AFA9EC" opacity="0.4"/>
-              <rect width="12" height="12" x="14" y="14" rx="2" fill="#534AB7" opacity="0.8"/>
-            </svg>
-          </div>
-          <div>
-            <div style={styles.brandName}>Project Portal</div>
-            <div style={styles.brandSub}>Meridian Developments</div>
-          </div>
+          <img src={logo} alt="TGC Homes" style={styles.logo} />
         </div>
 
-        <h1 style={styles.heading}>Sign in to your workspace</h1>
-        <p style={styles.sub}>Enter your credentials to access your projects</p>
+        <div style={styles.divider} />
+
+        <h1 style={styles.heading}>Project Portal</h1>
+        <p style={styles.sub}>Sign in to access your projects</p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.field}>
@@ -77,35 +69,56 @@ export default function LoginPage() {
   )
 }
 
+const NAVY = '#1B2B4B'
+const GOLD = '#B8952A'
+
 const styles = {
   page: {
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#F7F6F3',
+    background: `linear-gradient(135deg, ${NAVY} 0%, #243554 100%)`,
     padding: '24px',
     fontFamily: "'DM Sans', system-ui, sans-serif"
   },
   card: {
     background: '#fff',
-    border: '0.5px solid #E0DED6',
     borderRadius: '16px',
     padding: '40px',
     width: '100%',
-    maxWidth: '420px'
+    maxWidth: '420px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
   },
   brand: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '32px'
+    justifyContent: 'center',
+    marginBottom: '24px'
   },
-  logoMark: { flexShrink: 0 },
-  brandName: { fontSize: '15px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '-0.02em' },
-  brandSub: { fontSize: '12px', color: '#888', marginTop: '1px' },
-  heading: { fontSize: '22px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '-0.03em', marginBottom: '6px' },
-  sub: { fontSize: '14px', color: '#888', marginBottom: '28px' },
+  logo: {
+    height: '60px',
+    width: 'auto',
+    objectFit: 'contain'
+  },
+  divider: {
+    height: '1px',
+    background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`,
+    marginBottom: '24px'
+  },
+  heading: {
+    fontSize: '22px',
+    fontWeight: '600',
+    color: NAVY,
+    letterSpacing: '-0.03em',
+    marginBottom: '6px',
+    textAlign: 'center'
+  },
+  sub: {
+    fontSize: '14px',
+    color: '#888',
+    marginBottom: '28px',
+    textAlign: 'center'
+  },
   form: { display: 'flex', flexDirection: 'column', gap: '16px' },
   field: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '13px', fontWeight: '500', color: '#444' },
@@ -129,7 +142,7 @@ const styles = {
   },
   btn: {
     padding: '11px',
-    background: '#534AB7',
+    background: NAVY,
     color: '#fff',
     border: 'none',
     borderRadius: '8px',

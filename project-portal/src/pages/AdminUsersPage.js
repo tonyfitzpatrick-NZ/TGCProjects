@@ -387,8 +387,6 @@ function Buttons({ onClose, loading, label }) {
   </div>
 }
 
-function useState(init) { return require('react').useState(init) }
-
 const S = {
   topbar: { padding: '14px 20px', borderBottom: '0.5px solid #ECEAE4', display: 'flex', alignItems: 'center', gap: '10px' },
   title: { fontSize: '16px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '-0.02em', flex: 1 },

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { format, isPast, differenceInDays, parseISO } from 'date-fns'
 import InviteModal, { UploadModal, LinkModal, EditProjectModal } from '../components/InviteModal'
+import CompanyAccessPanel from '../components/CompanyAccessPanel'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -217,11 +218,20 @@ export default function ProjectDetailPage() {
       {/* TEAM TAB */}
       {tab === 'team' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          {isLead && (
-            <button onClick={() => setShowInvite(true)} style={{ ...S.btnPrimary, marginBottom: '20px' }}>
-              <Plus size={13} /> Add consultant
-            </button>
-          )}
+          {/* Company access section */}
+          <div style={{ marginBottom: '24px', padding: '16px', background: '#FAFAF8', borderRadius: '12px', border: '0.5px solid #ECEAE4' }}>
+            <CompanyAccessPanel projectId={id} isLead={isLead} />
+          </div>
+
+          {/* Individual members */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '500', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.07em', flex: 1 }}>Individual Members</div>
+            {isLead && (
+              <button onClick={() => setShowInvite(true)} style={S.btnPrimary}>
+                <Plus size={13} /> Add member
+              </button>
+            )}
+          </div>
           <div style={{ display: 'grid', gap: '10px' }}>
             {members.map(m => {
               const dl = deadlineBadge(m.deadline)
@@ -251,7 +261,7 @@ export default function ProjectDetailPage() {
             })}
           </div>
           {members.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#ccc', padding: '40px', fontSize: '14px' }}>No team members yet.</div>
+            <div style={{ textAlign: 'center', color: '#ccc', padding: '20px', fontSize: '13px' }}>No individual members added yet.</div>
           )}
         </div>
       )}

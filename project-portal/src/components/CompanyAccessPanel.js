@@ -155,7 +155,7 @@ function AddCompanyModal({ available, projectId, onClose, onAdded }) {
   )
 }
 
-function useState(init) { return require('react').useState(init) }
+function createState(init) { return require('react').useState(init) }
 
 const S = {
   addBtn: { display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', border: '0.5px solid #D0CEC6', borderRadius: '6px', background: 'transparent', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', color: '#444' },

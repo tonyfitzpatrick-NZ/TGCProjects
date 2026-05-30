@@ -9,6 +9,7 @@ import AdminUsersPage from './pages/AdminUsersPage'
 import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
 import UploadsPage from './pages/UploadsPage'
+import TasksAdminPage from './pages/TasksAdminPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -35,6 +36,7 @@ function App() {
                   <Route path="/deadlines" element={<DeadlinesPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/uploads" element={<UploadsPage />} />
+                  <Route path="/tasks" element={<TasksAdminPage />} />
                   <Route path="/onedrive" element={<OneDrivePage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/admin/settings" element={<SettingsPage />} />
@@ -56,11 +58,10 @@ function PublicRoute({ children }) {
   return user ? <Navigate to="/" replace /> : children
 }
 
-// Simple OneDrive placeholder page
 function OneDrivePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '14px 20px', borderBottom: '0.5px solid #ECEAE4', fontSize: '16px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '-0.02em' }}>
+      <div style={{ padding: '14px 20px', borderBottom: '0.5px solid #ECEAE4', fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>
         OneDrive
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', color: '#aaa' }}>
@@ -68,7 +69,7 @@ function OneDrivePage() {
           OneDrive files are linked per project. Open any project and go to the <strong>Files tab</strong> to access OneDrive links, or click the <strong>Open project OneDrive folder</strong> button.
         </div>
         <a href="https://onedrive.live.com" target="_blank" rel="noreferrer"
-          style={{ padding: '8px 18px', background: '#1B2B4B', color: '#fff', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', fontFamily: 'inherit' }}>
+          style={{ padding: '8px 18px', background: '#1B2B4B', color: '#fff', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
           Open OneDrive
         </a>
       </div>

@@ -307,8 +307,6 @@ function Field({ label, children }) {
   </div>
 }
 
-function useAuth() { return require('../hooks/useAuth').useAuth() }
-
 const S = {
   addBtn: { display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', border: '0.5px solid #D0CEC6', borderRadius: '6px', background: 'transparent', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', color: '#444' },
   iconBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#999', fontSize: '13px' },

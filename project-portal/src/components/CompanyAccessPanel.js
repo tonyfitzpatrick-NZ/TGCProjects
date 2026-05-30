@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Building2, Plus, ToggleLeft, ToggleRight, Users, ChevronDown, ChevronRight } from 'lucide-react'
+import { Building2, Plus, ToggleLeft, ToggleRight, ChevronDown, ChevronRight } from 'lucide-react'
 import { Modal } from './NewProjectModal'
+import { useAuth } from '../hooks/useAuth'
 
 export default function CompanyAccessPanel({ projectId, isLead }) {
   const [companyAccess, setCompanyAccess] = useState([])
@@ -118,7 +119,6 @@ function AddCompanyModal({ available, projectId, onClose, onAdded }) {
   const [selectedId, setSelectedId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { useAuth } = require('../hooks/useAuth')
   const { profile } = useAuth()
 
   async function handleSubmit(e) {
@@ -154,8 +154,6 @@ function AddCompanyModal({ available, projectId, onClose, onAdded }) {
     </Modal>
   )
 }
-
-function createState(init) { return require('react').useState(init) }
 
 const S = {
   addBtn: { display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', border: '0.5px solid #D0CEC6', borderRadius: '6px', background: 'transparent', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', color: '#444' },

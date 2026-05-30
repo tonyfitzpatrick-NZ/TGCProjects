@@ -3,21 +3,11 @@ import { useAuth } from '../hooks/useAuth'
 import logo from '../lib/logo'
 import {
   LayoutGrid, Clock, Bell, FolderOpen, Upload,
-  Users, Settings, LogOut
+  Users, Settings, LogOut, CheckSquare
 } from 'lucide-react'
 
 const NAVY = '#1B2B4B'
 const GOLD = '#B8952A'
-
-const NAV = [
-  { label: 'All Projects', icon: LayoutGrid, path: '/' },
-  { label: 'Deadlines', icon: Clock, path: '/deadlines' },
-  { label: 'Notifications', icon: Bell, path: '/notifications' },
-]
-const NAV_ADMIN = [
-  { label: 'Users & Access', icon: Users, path: '/admin/users' },
-  { label: 'Settings', icon: Settings, path: '/admin/settings' },
-]
 
 export default function Layout({ children }) {
   const { profile, signOut } = useAuth()
@@ -25,6 +15,7 @@ export default function Layout({ children }) {
   const location = useLocation()
 
   const isAdmin = profile?.role === 'admin'
+  const isLead = isAdmin || profile?.role === 'project_lead'
   const initials = profile?.avatar_initials ||
     profile?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
 
@@ -40,8 +31,8 @@ export default function Layout({ children }) {
         fontWeight: active ? '500' : '400',
         transition: 'all 0.1s'
       }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = active ? GOLD : 'rgba(255,255,255,0.9)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = active ? 'rgba(184,149,42,0.15)' : 'transparent'; e.currentTarget.style.color = active ? GOLD : 'rgba(255,255,255,0.65)' }}
+        onMouseEnter={e => { e.currentTarget.style.background = active ? 'rgba(184,149,42,0.15)' : 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = active ? GOLD : 'rgba(255,255,255,0.9)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = active ? 'rgba(184,149,42,0.15)' : 'transparent'; e.currentTarget.style.color = active ? GOLD : 'rgba(255,255,255,0.65)' }}
       >
         <Icon size={15} strokeWidth={1.8} />
         {label}
@@ -52,11 +43,8 @@ export default function Layout({ children }) {
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif", background: '#F7F6F3' }}>
       {/* Sidebar */}
-      <div style={{
-        width: '210px', flexShrink: 0,
-        background: NAVY,
-        display: 'flex', flexDirection: 'column'
-      }}>
+      <div style={{ width: '210px', flexShrink: 0, background: NAVY, display: 'flex', flexDirection: 'column' }}>
+
         {/* Logo */}
         <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <img src={logo} alt="TGC Homes" style={{ height: '44px', width: 'auto', objectFit: 'contain' }} />
@@ -68,15 +56,19 @@ export default function Layout({ children }) {
         {/* Nav */}
         <div style={{ flex: 1, paddingTop: '8px', overflowY: 'auto' }}>
           <SectionLabel>Workspace</SectionLabel>
-          {NAV.map(n => <NavItem key={n.path} {...n} />)}
+          <NavItem icon={LayoutGrid} label="All Projects" path="/" />
+          <NavItem icon={CheckSquare} label="Tasks" path="/tasks" />
+          <NavItem icon={Clock} label="Deadlines" path="/deadlines" />
+          <NavItem icon={Bell} label="Notifications" path="/notifications" />
 
           <SectionLabel>Files</SectionLabel>
           <NavItem icon={FolderOpen} label="OneDrive" path="/onedrive" />
           <NavItem icon={Upload} label="Shared Uploads" path="/uploads" />
 
-          {isAdmin && <>
+          {(isAdmin || isLead) && <>
             <SectionLabel>Admin</SectionLabel>
-            {NAV_ADMIN.map(n => <NavItem key={n.path} {...n} />)}
+            <NavItem icon={Users} label="Users & Access" path="/admin/users" />
+            <NavItem icon={Settings} label="Settings" path="/admin/settings" />
           </>}
         </div>
 
@@ -115,8 +107,7 @@ export default function Layout({ children }) {
 function SectionLabel({ children }) {
   return (
     <div style={{
-      padding: '10px 14px 4px',
-      fontSize: '10px', textTransform: 'uppercase',
+      padding: '10px 14px 4px', fontSize: '10px', textTransform: 'uppercase',
       letterSpacing: '0.08em', color: 'rgba(255,255,255,0.25)', fontWeight: '500'
     }}>{children}</div>
   )

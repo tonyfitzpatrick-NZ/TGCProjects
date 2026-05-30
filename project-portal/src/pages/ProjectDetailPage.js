@@ -10,6 +10,7 @@ import {
 import { format, isPast, differenceInDays, parseISO } from 'date-fns'
 import InviteModal, { UploadModal, LinkModal, EditProjectModal } from '../components/InviteModal'
 import CompanyAccessPanel from '../components/CompanyAccessPanel'
+import TasksPanel from '../components/TasksPanel'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -157,7 +158,7 @@ export default function ProjectDetailPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '0.5px solid #ECEAE4', background: '#fff' }}>
-        {['files', 'team', 'messages'].map(t => (
+        {['files', 'tasks', 'team', 'messages'].map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding: '10px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
             fontSize: '13px', fontFamily: 'inherit', fontWeight: tab === t ? '500' : '400',
@@ -263,6 +264,13 @@ export default function ProjectDetailPage() {
           {members.length === 0 && (
             <div style={{ textAlign: 'center', color: '#ccc', padding: '20px', fontSize: '13px' }}>No individual members added yet.</div>
           )}
+        </div>
+      )}
+
+      {/* TASKS TAB */}
+      {tab === 'tasks' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+          <TasksPanel projectId={id} isLead={isLead} />
         </div>
       )}
 

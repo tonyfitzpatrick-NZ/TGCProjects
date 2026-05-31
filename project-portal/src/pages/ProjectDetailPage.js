@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { supabase, STAGES, STAGE_COLORS, FILE_TYPE_COLORS } from '../lib/supabase'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { supabase, STAGES, STAGE_COLORS, FILE_TYPE_COLORS, TASK_STATUS_COLORS } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
   ArrowLeft, Plus, Upload, Link2, Send, Trash2,
-  FileText, File, AlertTriangle, AlertCircle, CheckCircle,
-  ExternalLink, ChevronDown
+  FileText, AlertTriangle, AlertCircle, CheckCircle,
+  ExternalLink, Home, CheckSquare, MessageSquare, Users
 } from 'lucide-react'
 import { format, isPast, differenceInDays, parseISO } from 'date-fns'
-import InviteModal, { UploadModal, LinkModal, EditProjectModal } from '../components/InviteModal'
+import InviteModal, { UploadModal, LinkModal } from '../components/InviteModal'
+import NewProjectModal, { Modal } from '../components/NewProjectModal'
 import CompanyAccessPanel from '../components/CompanyAccessPanel'
 import TasksPanel from '../components/TasksPanel'
 
@@ -16,37 +17,39 @@ export default function ProjectDetailPage() {
   const { id } = useParams()
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [project, setProject] = useState(null)
   const [members, setMembers] = useState([])
   const [files, setFiles] = useState([])
   const [messages, setMessages] = useState([])
-  const [tab, setTab] = useState('files')
+  const [tasks, setTasks] = useState([])
+  const [tab, setTab] = useState(searchParams.get('tab') || 'overview')
   const [msgText, setMsgText] = useState('')
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [showLink, setShowLink] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
+  const [editingMember, setEditingMember] = useState(null)
   const msgEnd = useRef(null)
   const isAdmin = profile?.role === 'admin'
   const isLead = isAdmin || members.find(m => m.user_id === profile?.id)?.role === 'lead'
 
   useEffect(() => { fetchAll() }, [id])
   useEffect(() => { msgEnd.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
-
   useEffect(() => {
-    const sub = supabase.channel(`project-${id}`)
+    const sub = supabase.channel(`proj-${id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'project_messages', filter: `project_id=eq.${id}` },
         payload => setMessages(prev => [...prev, payload.new]))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'project_files', filter: `project_id=eq.${id}` },
-        () => fetchFiles())
       .subscribe()
     return () => supabase.removeChannel(sub)
   }, [id])
 
+  function switchTab(t) { setTab(t); setSearchParams({ tab: t }) }
+
   async function fetchAll() {
     setLoading(true)
-    await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchMessages()])
+    await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchMessages(), fetchTasks()])
     setLoading(false)
   }
   async function fetchProject() {
@@ -55,23 +58,27 @@ export default function ProjectDetailPage() {
   }
   async function fetchMembers() {
     const { data } = await supabase.from('project_members')
-      .select('*, profiles(full_name, avatar_initials, company, role)')
+      .select('*, profiles(full_name, avatar_initials, company_id, companies(name), discipline)')
       .eq('project_id', id)
     setMembers(data || [])
   }
   async function fetchFiles() {
     const { data } = await supabase.from('project_files')
       .select('*, profiles(full_name)')
-      .eq('project_id', id)
-      .order('created_at', { ascending: false })
+      .eq('project_id', id).order('created_at', { ascending: false })
     setFiles(data || [])
   }
   async function fetchMessages() {
     const { data } = await supabase.from('project_messages')
       .select('*, profiles(full_name, avatar_initials)')
-      .eq('project_id', id)
-      .order('created_at')
+      .eq('project_id', id).order('created_at')
     setMessages(data || [])
+  }
+  async function fetchTasks() {
+    const { data } = await supabase.from('tasks')
+      .select('*, assigned_company:companies(name), assigned_user:profiles!tasks_assigned_user_id_fkey(full_name)')
+      .eq('project_id', id).order('created_at')
+    setTasks(data || [])
   }
 
   async function sendMessage() {
@@ -86,90 +93,172 @@ export default function ProjectDetailPage() {
     fetchFiles()
   }
 
-  async function downloadFile(f) {
+  async function openFile(f) {
     if (f.onedrive_url) { window.open(f.onedrive_url, '_blank'); return }
     const { data } = await supabase.storage.from('project-files').createSignedUrl(f.storage_path, 60)
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
-  if (loading) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>
-      Loading project…
-    </div>
-  )
-  if (!project) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>
-      Project not found.
-    </div>
-  )
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>Loading project…</div>
+  if (!project) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>Project not found.</div>
 
   const sc = STAGE_COLORS[project.stage] || { bg: '#F1EFE8', color: '#5F5E5A' }
   const stageIdx = STAGES.indexOf(project.stage)
-  const categories = ['Project Brief', 'Drawings', 'Consultant Docs', 'General']
-  const filesByCategory = categories.reduce((acc, cat) => {
-    acc[cat] = files.filter(f => f.category === cat)
-    return acc
-  }, {})
+  const coverUrl = project.cover_image_path
+    ? supabase.storage.from('project-covers').getPublicUrl(project.cover_image_path).data?.publicUrl
+    : null
 
-  function deadlineBadge(deadline) {
-    if (!deadline) return null
-    const d = parseISO(deadline)
-    const days = differenceInDays(d, new Date())
-    if (isPast(d) && days < 0) return { icon: AlertTriangle, color: '#A32D2D', label: `Overdue (${format(d, 'd MMM')})` }
-    if (days <= 14) return { icon: AlertCircle, color: '#854F0B', label: format(d, 'd MMM yyyy') }
-    return { icon: CheckCircle, color: '#1D9E75', label: format(d, 'd MMM yyyy') }
-  }
-
-  function memberInit(m) {
-    return m.profiles?.avatar_initials ||
-      m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
-  }
+  const TABS = ['overview', 'files', 'tasks', 'team', 'messages']
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px', borderBottom: '0.5px solid #ECEAE4', background: '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+      <div style={{ borderBottom: '0.5px solid #ECEAE4', background: '#fff' }}>
+        <div style={{ padding: '14px 20px 10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={() => navigate('/')} style={S.iconBtn}><ArrowLeft size={15} /></button>
+          {coverUrl && <img src={coverUrl} alt="" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />}
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h1 style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '-0.02em', margin: 0 }}>{project.name}</h1>
               <span style={{ ...S.badge, background: sc.bg, color: sc.color }}>{project.stage}</span>
+              {project.status && project.status !== 'Active' && (
+                <span style={{ ...S.badge, background: '#F0EFEF', color: '#999' }}>{project.status}</span>
+              )}
             </div>
-            <div style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}>{project.code}{project.client_name ? ` · ${project.client_name}` : ''}</div>
+            <div style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}>
+              {project.code}{project.client_name ? ` · ${project.client_name}` : ''}{project.address ? ` · ${project.address}` : ''}
+            </div>
           </div>
-          {isLead && (
-            <button onClick={() => setShowEdit(true)} style={S.btn}>Edit project</button>
-          )}
+          {isLead && <button onClick={() => setShowEdit(true)} style={S.btn}>Edit project</button>}
         </div>
-        {/* Stage progress */}
-        <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
-          {STAGES.map((s, i) => (
-            <div key={s} title={s} style={{
-              flex: 1, height: '4px', borderRadius: '2px',
-              background: i < stageIdx ? '#534AB7' : i === stageIdx ? '#AFA9EC' : '#E8E6E0'
-            }} />
+        {/* Stage bar */}
+        <div style={{ padding: '0 20px 6px' }}>
+          <div style={{ display: 'flex', gap: '3px', marginBottom: '3px' }}>
+            {STAGES.map((s, i) => (
+              <div key={s} title={s} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < stageIdx ? '#1B2B4B' : i === stageIdx ? '#B8952A' : '#E8E6E0' }} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#bbb' }}>
+            {STAGES.map(s => <span key={s}>{s.split(' ')[0]}</span>)}
+          </div>
+        </div>
+        {/* Tabs */}
+        <div style={{ display: 'flex', paddingLeft: '8px' }}>
+          {TABS.map(t => (
+            <button key={t} onClick={() => switchTab(t)} style={{
+              padding: '8px 14px', border: 'none', background: 'transparent', cursor: 'pointer',
+              fontSize: '13px', fontFamily: 'inherit', fontWeight: tab === t ? '500' : '400',
+              color: tab === t ? '#1B2B4B' : '#888',
+              borderBottom: `2px solid ${tab === t ? '#B8952A' : 'transparent'}`,
+              textTransform: 'capitalize', transition: 'all 0.1s'
+            }}>{t}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#bbb' }}>
-          {STAGES.map(s => <span key={s}>{s.split(' ')[0]}</span>)}
+      </div>
+
+      {/* ── OVERVIEW TAB ─────────────────────────────────────── */}
+      {tab === 'overview' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+
+            {/* Project info card */}
+            <div style={S.card}>
+              <CardHeader title="Project Info" icon={<Home size={14} />} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  ['Code', project.code], ['Client', project.client_name],
+                  ['Address', project.address], ['Legal description', project.legal_description],
+                  ['Site area', project.site_area ? `${project.site_area} m²` : null],
+                  ['TA', project.territorial_authority], ['TA Zone', project.ta_zone],
+                  ['BCA', project.building_consent_authority],
+                  ['Wind zone', project.wind_zone], ['Earthquake zone', project.earthquake_zone],
+                  ['Exposure zone', project.exposure_zone],
+                  ['Deadline', project.project_deadline ? format(parseISO(project.project_deadline), 'd MMM yyyy') : null],
+                ].filter(([, v]) => v).map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', fontSize: '12px', gap: '8px' }}>
+                    <span style={{ color: '#aaa', width: '120px', flexShrink: 0 }}>{label}</span>
+                    <span style={{ color: '#1a1a1a' }}>{value}</span>
+                  </div>
+                ))}
+                {project.description && <div style={{ fontSize: '12px', color: '#666', marginTop: '6px', lineHeight: '1.6', borderTop: '0.5px solid #F3F1EB', paddingTop: '8px' }}>{project.description}</div>}
+              </div>
+            </div>
+
+            {/* Files card */}
+            <div style={{ ...S.card, cursor: 'pointer' }} onClick={() => switchTab('files')}>
+              <CardHeader title="Recent Files" icon={<FileText size={14} />} count={files.length} onMore={() => switchTab('files')} />
+              {files.slice(0, 5).map(f => {
+                const ext = f.file_type || 'doc'
+                const tc = FILE_TYPE_COLORS[ext] || { bg: '#F1EFE8', color: '#5F5E5A' }
+                return (
+                  <div key={f.id} onClick={e => { e.stopPropagation(); openFile(f) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '0.5px solid #F3F1EB', cursor: 'pointer' }}>
+                    <FileText size={13} color="#aaa" />
+                    <span style={{ flex: 1, fontSize: '12px', color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</span>
+                    <span style={{ ...S.badge, background: tc.bg, color: tc.color, fontSize: '10px' }}>{ext.toUpperCase()}</span>
+                  </div>
+                )
+              })}
+              {files.length === 0 && <div style={S.emptyCard}>No files yet</div>}
+            </div>
+
+            {/* Tasks card */}
+            <div style={{ ...S.card, cursor: 'pointer' }} onClick={() => switchTab('tasks')}>
+              <CardHeader title="Tasks" icon={<CheckSquare size={14} />} count={tasks.length} onMore={() => switchTab('tasks')} />
+              {tasks.slice(0, 5).map(t => {
+                const tc = TASK_STATUS_COLORS[t.status] || TASK_STATUS_COLORS['Open']
+                return (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '0.5px solid #F3F1EB' }}>
+                    <span style={{ ...S.badge, background: tc.bg, color: tc.color, fontSize: '10px', flexShrink: 0 }}>{t.status}</span>
+                    <span style={{ flex: 1, fontSize: '12px', color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
+                    {t.assigned_company && <span style={{ fontSize: '11px', color: '#aaa', flexShrink: 0 }}>{t.assigned_company.name}</span>}
+                  </div>
+                )
+              })}
+              {tasks.length === 0 && <div style={S.emptyCard}>No tasks yet</div>}
+            </div>
+
+            {/* Team card */}
+            <div style={{ ...S.card, cursor: 'pointer' }} onClick={() => switchTab('team')}>
+              <CardHeader title="Team" icon={<Users size={14} />} count={members.length} onMore={() => switchTab('team')} />
+              {members.slice(0, 5).map(m => {
+                const init = m.profiles?.avatar_initials || m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
+                const dl = m.deadline ? deadlineBadge(m.deadline) : null
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '0.5px solid #F3F1EB' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#EEEDFE', color: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: '600', flexShrink: 0 }}>{init}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '12px', fontWeight: '500', color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.profiles?.full_name}</div>
+                      <div style={{ fontSize: '11px', color: '#aaa' }}>{m.consultant_type}</div>
+                    </div>
+                    {dl && <span style={{ fontSize: '11px', color: dl.color, flexShrink: 0 }}>{dl.label}</span>}
+                  </div>
+                )
+              })}
+              {members.length === 0 && <div style={S.emptyCard}>No team members yet</div>}
+            </div>
+
+            {/* Messages card */}
+            <div style={{ ...S.card, cursor: 'pointer', gridColumn: 'span 2' }} onClick={() => switchTab('messages')}>
+              <CardHeader title="Recent Messages" icon={<MessageSquare size={14} />} count={messages.length} onMore={() => switchTab('messages')} />
+              {messages.slice(-5).reverse().map(m => {
+                const isMe = m.user_id === profile?.id
+                return (
+                  <div key={m.id} style={{ padding: '6px 0', borderBottom: '0.5px solid #F3F1EB' }}>
+                    <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '2px' }}>
+                      {isMe ? 'You' : m.profiles?.full_name} · {format(new Date(m.created_at), 'd MMM, h:mm a')}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#1a1a1a', lineHeight: '1.5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.body}</div>
+                  </div>
+                )
+              })}
+              {messages.length === 0 && <div style={S.emptyCard}>No messages yet</div>}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '0.5px solid #ECEAE4', background: '#fff' }}>
-        {['files', 'tasks', 'team', 'messages'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: '10px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
-            fontSize: '13px', fontFamily: 'inherit', fontWeight: tab === t ? '500' : '400',
-            color: tab === t ? '#534AB7' : '#888',
-            borderBottom: `2px solid ${tab === t ? '#534AB7' : 'transparent'}`,
-            textTransform: 'capitalize', transition: 'all 0.1s'
-          }}>{t}</button>
-        ))}
-      </div>
-
-      {/* FILES TAB */}
+      {/* ── FILES TAB ──────────────────────────────────────────── */}
       {tab === 'files' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -177,22 +266,21 @@ export default function ProjectDetailPage() {
             <button onClick={() => setShowLink(true)} style={S.btn}><Link2 size={13} /> Add OneDrive link</button>
             {project.onedrive_url && (
               <button onClick={() => window.open(project.onedrive_url, '_blank')} style={S.btn}>
-                <ExternalLink size={13} /> Open project OneDrive folder
+                <ExternalLink size={13} /> Open OneDrive folder
               </button>
             )}
           </div>
-          {categories.map(cat => {
-            const catFiles = filesByCategory[cat]
+          {['Project Brief', 'Drawings', 'Consultant Docs', 'General'].map(cat => {
+            const catFiles = files.filter(f => f.category === cat)
             if (!catFiles.length) return null
             return (
               <div key={cat} style={{ marginBottom: '20px' }}>
                 <div style={{ fontSize: '11px', fontWeight: '500', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>{cat}</div>
                 {catFiles.map(f => {
                   const ext = f.file_type || 'doc'
-                  const tc = FILE_TYPE_COLORS[ext] || FILE_TYPE_COLORS.doc
+                  const tc = FILE_TYPE_COLORS[ext] || { bg: '#F1EFE8', color: '#5F5E5A' }
                   return (
-                    <div key={f.id} style={S.fileRow}
-                      onClick={() => downloadFile(f)}
+                    <div key={f.id} style={S.fileRow} onClick={() => openFile(f)}
                       onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                       <FileText size={15} color="#aaa" />
@@ -210,78 +298,44 @@ export default function ProjectDetailPage() {
               </div>
             )
           })}
-          {files.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#ccc', padding: '40px', fontSize: '14px' }}>No files yet. Upload or link files above.</div>
-          )}
+          {files.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '40px' }}>No files yet.</div>}
         </div>
       )}
 
-      {/* TEAM TAB */}
+      {/* ── TASKS TAB ──────────────────────────────────────────── */}
+      {tab === 'tasks' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+          <TasksPanel projectId={id} isLead={isLead} onTasksChanged={fetchTasks} />
+        </div>
+      )}
+
+      {/* ── TEAM TAB ───────────────────────────────────────────── */}
       {tab === 'team' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          {/* Company access section */}
           <div style={{ marginBottom: '24px', padding: '16px', background: '#FAFAF8', borderRadius: '12px', border: '0.5px solid #ECEAE4' }}>
             <CompanyAccessPanel projectId={id} isLead={isLead} />
           </div>
-
-          {/* Individual members */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
             <div style={{ fontSize: '11px', fontWeight: '500', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.07em', flex: 1 }}>Individual Members</div>
-            {isLead && (
-              <button onClick={() => setShowInvite(true)} style={S.btnPrimary}>
-                <Plus size={13} /> Add member
-              </button>
-            )}
+            {isLead && <button onClick={() => setShowInvite(true)} style={S.btnPrimary}><Plus size={13} /> Add member</button>}
           </div>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {members.map(m => {
-              const dl = deadlineBadge(m.deadline)
-              const DlIcon = dl?.icon
-              const init = memberInit(m)
-              return (
-                <div key={m.id} style={S.memberCard}>
-                  <div style={{ ...S.memberAvatar, background: '#EEEDFE', color: '#534AB7' }}>{init}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{m.profiles?.full_name}</div>
-                    <div style={{ fontSize: '12px', color: '#aaa' }}>
-                      {m.consultant_type || m.profiles?.role}
-                      {m.profiles?.company ? ` · ${m.profiles.company}` : ''}
-                    </div>
-                  </div>
-                  {dl && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: dl.color }}>
-                      <DlIcon size={12} />
-                      {dl.label}
-                    </div>
-                  )}
-                  {m.role === 'lead' && (
-                    <span style={{ ...S.badge, background: '#EEEDFE', color: '#534AB7', fontSize: '10px' }}>Lead</span>
-                  )}
-                </div>
-              )
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {members.map(m => (
+              <MemberCard key={m.id} member={m} isLead={isLead} profile={profile}
+                onEdit={() => setEditingMember(m)} onRefresh={fetchMembers} />
+            ))}
           </div>
-          {members.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#ccc', padding: '20px', fontSize: '13px' }}>No individual members added yet.</div>
-          )}
+          {members.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '20px', fontSize: '13px' }}>No individual members added yet.</div>}
         </div>
       )}
 
-      {/* TASKS TAB */}
-      {tab === 'tasks' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          <TasksPanel projectId={id} isLead={isLead} />
-        </div>
-      )}
-
-      {/* MESSAGES TAB */}
+      {/* ── MESSAGES TAB ───────────────────────────────────────── */}
       {tab === 'messages' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {messages.map(m => {
               const isMe = m.user_id === profile?.id
-              const init = m.profiles?.avatar_initials ||
-                m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?'
+              const init = m.profiles?.avatar_initials || m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?'
               return (
                 <div key={m.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: isMe ? 'row-reverse' : 'row' }}>
                   <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isMe ? '#EEEDFE' : '#E1F5EE', color: isMe ? '#534AB7' : '#0F6E56', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '600', flexShrink: 0 }}>{init}</div>
@@ -296,9 +350,7 @@ export default function ProjectDetailPage() {
                 </div>
               )
             })}
-            {messages.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#ccc', padding: '40px', fontSize: '14px' }}>No messages yet. Start the conversation.</div>
-            )}
+            {messages.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '40px' }}>No messages yet.</div>}
             <div ref={msgEnd} />
           </div>
           <div style={{ padding: '12px 20px', borderTop: '0.5px solid #ECEAE4', display: 'flex', gap: '8px' }}>
@@ -317,17 +369,163 @@ export default function ProjectDetailPage() {
       {showInvite && <InviteModal projectId={id} onClose={() => setShowInvite(false)} onAdded={fetchMembers} />}
       {showUpload && <UploadModal projectId={id} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} />}
       {showLink && <LinkModal projectId={id} onClose={() => setShowLink(false)} onAdded={fetchFiles} />}
-      {showEdit && <EditProjectModal project={project} onClose={() => setShowEdit(false)} onUpdated={() => { setShowEdit(false); fetchProject() }} />}
+      {showEdit && <NewProjectModal project={project} onClose={() => setShowEdit(false)} onCreated={() => { setShowEdit(false); fetchProject() }} />}
+      {editingMember && <EditMemberModal member={editingMember} onClose={() => setEditingMember(null)} onSaved={fetchMembers} />}
     </div>
   )
 }
 
+function CardHeader({ title, icon, count, onMore }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', paddingBottom: '8px', borderBottom: '0.5px solid #F3F1EB' }}>
+      <span style={{ color: '#B8952A' }}>{icon}</span>
+      <span style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a', flex: 1 }}>{title}</span>
+      {count !== undefined && <span style={{ fontSize: '11px', color: '#aaa' }}>{count} total</span>}
+    </div>
+  )
+}
+
+function MemberCard({ member: m, isLead, profile, onEdit, onRefresh }) {
+  const init = m.profiles?.avatar_initials || m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
+  const dl = m.deadline ? deadlineBadge(m.deadline) : null
+
+  async function removeMember() {
+    if (!window.confirm(`Remove ${m.profiles?.full_name} from this project?`)) return
+    await supabase.from('project_members').delete().eq('id', m.id)
+    onRefresh()
+  }
+
+  return (
+    <div style={S.memberCard}>
+      <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#EEEDFE', color: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', flexShrink: 0 }}>{init}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{m.profiles?.full_name}</div>
+        <div style={{ fontSize: '11px', color: '#aaa' }}>
+          {m.consultant_type}{m.profiles?.companies?.name ? ` · ${m.profiles.companies.name}` : ''}
+        </div>
+        {/* Engagement dates */}
+        <div style={{ display: 'flex', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
+          {m.date_engaged && <span style={{ fontSize: '11px', color: '#888' }}>Engaged: {format(parseISO(m.date_engaged), 'd MMM yyyy')}</span>}
+          {m.date_docs_sent && <span style={{ fontSize: '11px', color: '#888' }}>Docs sent: {format(parseISO(m.date_docs_sent), 'd MMM yyyy')}</span>}
+          {m.date_preliminary_returned && <span style={{ fontSize: '11px', color: '#0F6E56' }}>Prelim returned: {format(parseISO(m.date_preliminary_returned), 'd MMM yyyy')}</span>}
+          {m.date_completed && <span style={{ fontSize: '11px', color: '#0F6E56' }}>Completed: {format(parseISO(m.date_completed), 'd MMM yyyy')}</span>}
+        </div>
+      </div>
+      {dl && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: dl.color, fontWeight: dl.status !== 'ok' ? '500' : '400', flexShrink: 0 }}>
+          {dl.status === 'overdue' && <AlertTriangle size={12} />}
+          {dl.status === 'soon' && <AlertCircle size={12} />}
+          {dl.status === 'ok' && <CheckCircle size={12} />}
+          {dl.label}
+        </div>
+      )}
+      {m.role === 'lead' && <span style={{ ...S.badge, background: '#EEEDFE', color: '#534AB7', fontSize: '10px', flexShrink: 0 }}>Lead</span>}
+      {isLead && (
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button onClick={onEdit} style={S.iconBtn} title="Edit">✎</button>
+          {m.user_id !== profile?.id && (
+            <button onClick={removeMember} style={{ ...S.iconBtn, color: '#ddd' }} title="Remove"><Trash2 size={12} /></button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EditMemberModal({ member: m, onClose, onSaved }) {
+    consultant_type: m.consultant_type || '',
+    role: m.role || 'consultant',
+    deadline: m.deadline || '',
+    date_engaged: m.date_engaged || '',
+    date_docs_sent: m.date_docs_sent || '',
+    date_preliminary_returned: m.date_preliminary_returned || '',
+    date_completed: m.date_completed || ''
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+
+  async function handleSubmit(e) {
+    e.preventDefault(); setLoading(true); setError('')
+    const { error: err } = await supabase.from('project_members').update({
+      consultant_type: form.consultant_type,
+      role: form.role,
+      deadline: form.deadline || null,
+      date_engaged: form.date_engaged || null,
+      date_docs_sent: form.date_docs_sent || null,
+      date_preliminary_returned: form.date_preliminary_returned || null,
+      date_completed: form.date_completed || null
+    }).eq('id', m.id)
+    if (err) { setError(err.message); setLoading(false); return }
+    onSaved(); onClose()
+  }
+
+  return (
+    <Modal title={`Edit — ${m.profiles?.full_name}`} onClose={onClose}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ fontSize: '12px', color: '#aaa', background: '#F7F6F3', padding: '10px 12px', borderRadius: '8px' }}>
+          Updating engagement dates and deadline for <strong>{m.profiles?.full_name}</strong> on this project.
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Field label="Consultant type">
+            <input style={S.input} value={form.consultant_type} onChange={e => set('consultant_type', e.target.value)} />
+          </Field>
+          <Field label="Portal role">
+            <select style={S.input} value={form.role} onChange={e => set('role', e.target.value)}>
+              <option value="consultant">Consultant</option>
+              <option value="lead">Project lead</option>
+            </select>
+          </Field>
+        </div>
+        <SectionLabel>Engagement tracking</SectionLabel>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Field label="Date engaged"><input style={S.input} type="date" value={form.date_engaged} onChange={e => set('date_engaged', e.target.value)} /></Field>
+          <Field label="Docs sent"><input style={S.input} type="date" value={form.date_docs_sent} onChange={e => set('date_docs_sent', e.target.value)} /></Field>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Field label="Preliminary returned"><input style={S.input} type="date" value={form.date_preliminary_returned} onChange={e => set('date_preliminary_returned', e.target.value)} /></Field>
+          <Field label="Work completed"><input style={S.input} type="date" value={form.date_completed} onChange={e => set('date_completed', e.target.value)} /></Field>
+        </div>
+        <Field label="Deadline"><input style={S.input} type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} /></Field>
+        {error && <div style={S.error}>{error}</div>}
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={S.btnSec}>Cancel</button>
+          <button type="submit" style={S.btnPrimary} disabled={loading}>{loading ? 'Saving…' : 'Save changes'}</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function deadlineBadge(deadline) {
+  const d = parseISO(deadline)
+  const days = differenceInDays(d, new Date())
+  if (isPast(d) && days < 0) return { color: '#A32D2D', label: `Overdue · ${format(d, 'd MMM')}`, status: 'overdue' }
+  if (days <= 14) return { color: '#854F0B', label: format(d, 'd MMM yyyy'), status: 'soon' }
+  return { color: '#1D9E75', label: format(d, 'd MMM yyyy'), status: 'ok' }
+}
+
+function Field({ label, children }) {
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
+    <label style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>{label}</label>
+    {children}
+  </div>
+}
+
+function SectionLabel({ children }) {
+  return <div style={{ fontSize: '11px', fontWeight: '500', color: '#B8952A', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '0.5px solid #F0E8D0', paddingBottom: '4px' }}>{children}</div>
+}
+
 const S = {
   btn: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 13px', border: '0.5px solid #D0CEC6', borderRadius: '8px', background: 'transparent', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', color: '#444' },
-  btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 13px', background: '#534AB7', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' },
+  btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 13px', background: '#1B2B4B', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' },
+  btnSec: { padding: '8px 18px', background: 'transparent', color: '#666', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' },
   iconBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '5px', border: '0.5px solid #E0DED6', borderRadius: '6px', background: 'transparent', cursor: 'pointer', color: '#666' },
   badge: { display: 'inline-block', padding: '2px 9px', borderRadius: '20px', fontSize: '11px', fontWeight: '500' },
+  card: { background: '#fff', border: '0.5px solid #ECEAE4', borderRadius: '12px', padding: '14px 16px' },
+  emptyCard: { fontSize: '12px', color: '#ccc', padding: '12px 0', textAlign: 'center' },
   fileRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', marginBottom: '3px', border: '0.5px solid #ECEAE4', background: 'transparent', transition: 'background 0.1s' },
   memberCard: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: '0.5px solid #ECEAE4', borderRadius: '10px', background: '#fff' },
-  memberAvatar: { width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', flexShrink: 0 }
+  input: { padding: '8px 10px', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#FAFAF8', fontFamily: 'inherit', color: '#1a1a1a', width: '100%', boxSizing: 'border-box' },
+  error: { background: '#FAECE7', color: '#993C1D', fontSize: '13px', padding: '10px 12px', borderRadius: '8px' }
 }

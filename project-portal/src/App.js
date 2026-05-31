@@ -10,6 +10,7 @@ import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
 import UploadsPage from './pages/UploadsPage'
 import TasksAdminPage from './pages/TasksAdminPage'
+import ConsultantReportPage from './pages/ConsultantReportPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -37,6 +38,7 @@ function App() {
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/uploads" element={<UploadsPage />} />
                   <Route path="/tasks" element={<TasksAdminPage />} />
+                  <Route path="/consultants" element={<ConsultantReportPage />} />
                   <Route path="/onedrive" element={<OneDrivePage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/admin/settings" element={<SettingsPage />} />

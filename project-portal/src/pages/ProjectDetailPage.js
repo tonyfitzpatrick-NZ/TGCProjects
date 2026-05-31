@@ -433,6 +433,7 @@ function MemberCard({ member: m, isLead, profile, onEdit, onRefresh }) {
 }
 
 function EditMemberModal({ member: m, onClose, onSaved }) {
+  const [form, setForm] = useState({
     consultant_type: m.consultant_type || '',
     role: m.role || 'consultant',
     deadline: m.deadline || '',

@@ -315,39 +315,80 @@ function EditUserModal({ user, companies, onClose, onSaved }) {
   const [initials, setInitials] = useState(user.avatar_initials || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
 
   async function handleSubmit(e) {
-    e.preventDefault(); setLoading(true); setError('')
-    const { error: err } = await supabase.from('profiles').update({
-      full_name: fullName, company_id: companyId || null,
+    e.preventDefault()
+    setLoading(true); setError(''); setSaved(false)
+
+    const updatePayload = {
+      full_name: fullName,
+      company_id: companyId || null,
       discipline: discipline || null,
       avatar_initials: initials || fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    }).eq('id', user.id)
-    if (err) { setError(err.message); setLoading(false); return }
-    onSaved(); onClose()
+    }
+
+    const { data, error: err } = await supabase
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', user.id)
+      .select()
+
+    if (err) {
+      setError(`Save failed: ${err.message}`)
+      setLoading(false)
+      return
+    }
+
+    if (!data || data.length === 0) {
+      setError('Save was blocked — you may not have permission to edit this user. Please run the fix-profiles-rls.sql script in Supabase.')
+      setLoading(false)
+      return
+    }
+
+    setSaved(true)
+    setLoading(false)
+    setTimeout(() => { onSaved(); onClose() }, 800)
   }
 
   return (
     <Modal title={`Edit — ${user.full_name}`} onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <Field label="Full name *"><input style={S.input} value={fullName} onChange={e => setFullName(e.target.value)} required /></Field>
+        <Field label="Full name *">
+          <input style={S.input} value={fullName} onChange={e => setFullName(e.target.value)} required />
+        </Field>
         <Field label="Company">
           <select style={S.input} value={companyId} onChange={e => setCompanyId(e.target.value)}>
             <option value="">TGC Homes (In-house)</option>
-            {companies.map(c => <option key={c.id} value={c.id}>{c.name}{c.discipline ? ` — ${c.discipline}` : ''}</option>)}
+            {companies.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}{c.discipline ? ` — ${c.discipline}` : ''}
+              </option>
+            ))}
           </select>
         </Field>
-        <Field label="Individual discipline (overrides company discipline)">
+        <Field label="Discipline">
           <select style={S.input} value={discipline} onChange={e => setDiscipline(e.target.value)}>
             <option value="">Use company discipline</option>
             {DISCIPLINES.map(d => <option key={d}>{d}</option>)}
           </select>
         </Field>
-        <Field label="Avatar initials">
-          <input style={{ ...S.input, width: '80px' }} value={initials} onChange={e => setInitials(e.target.value.slice(0, 2).toUpperCase())} maxLength={2} placeholder="TF" />
+        <Field label="Avatar initials (2 letters)">
+          <input
+            style={{ ...S.input, width: '80px' }}
+            value={initials}
+            onChange={e => setInitials(e.target.value.slice(0, 2).toUpperCase())}
+            maxLength={2}
+            placeholder="TF"
+          />
         </Field>
         {error && <div style={S.error}>{error}</div>}
-        <Buttons onClose={onClose} loading={loading} label="Save changes" />
+        {saved && (
+          <div style={{ background: '#E1F5EE', color: '#0F6E56', fontSize: '13px', padding: '10px 12px', borderRadius: '8px' }}>
+            ✓ Saved successfully
+          </div>
+        )}
+        <Buttons onClose={onClose} loading={loading} label={loading ? 'Saving…' : 'Save changes'} />
       </form>
     </Modal>
   )

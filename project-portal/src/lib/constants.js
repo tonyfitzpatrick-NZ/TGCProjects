@@ -17,6 +17,54 @@ export const EARTHQUAKE_ZONES = ['Zone 1', 'Zone 2', 'Zone 3']
 
 export const EXPOSURE_ZONES = ['A', 'B', 'C', 'D']
 
+// Document management
+export const DISCIPLINE_CODES = [
+  { code: 'ARCH', label: 'Architecture' },
+  { code: 'STR',  label: 'Structural' },
+  { code: 'FIRE', label: 'Fire Design' },
+  { code: 'INT',  label: 'Interior Design' },
+  { code: 'CIVIL',label: 'Civil' },
+  { code: 'QS',   label: 'Quantity Surveying' },
+  { code: 'GEO',  label: 'Geotechnical' },
+  { code: 'PLAN', label: 'Planning' },
+  { code: 'MGT',  label: 'Management' },
+  { code: 'GEN',  label: 'General' },
+]
+
+export const DOC_TYPES = [
+  { code: 'DWG',   label: 'Drawing' },
+  { code: 'CAL',   label: 'Calculation' },
+  { code: 'RPT',   label: 'Report' },
+  { code: 'SPEC',  label: 'Specification' },
+  { code: 'SCHED', label: 'Schedule' },
+  { code: 'CERT',  label: 'Certificate' },
+  { code: 'IFC',   label: 'IFC Model' },
+  { code: 'PDF',   label: 'PDF' },
+  { code: 'BRIEF', label: 'Brief' },
+  { code: 'OTHER', label: 'Other' },
+]
+
+export const DOC_STATUSES = [
+  'For Information',
+  'For Approval',
+  'For Application',
+  'For Construction',
+  'Superseded',
+]
+
+export const DOC_STATUS_COLORS = {
+  'For Information':  { bg: '#E6F1FB', color: '#185FA5' },
+  'For Approval':     { bg: '#FAEEDA', color: '#854F0B' },
+  'For Application':  { bg: '#EEEDFE', color: '#534AB7' },
+  'For Construction': { bg: '#E1F5EE', color: '#0F6E56' },
+  'Superseded':       { bg: '#F0EFEF', color: '#999' },
+}
+
+export const REVISION_OPTIONS = [
+  'R00','R01','R02','R03','R04','R05',
+  'R06','R07','R08','R09','R10'
+]
+
 export const NZ_TERRITORIAL_AUTHORITIES = [
   'Auckland Council', 'Hamilton City Council', 'Tauranga City Council',
   'Wellington City Council', 'Christchurch City Council', 'Dunedin City Council',

@@ -13,6 +13,7 @@ import NewProjectModal, { Modal } from '../components/NewProjectModal'
 import CompanyAccessPanel from '../components/CompanyAccessPanel'
 import TasksPanel from '../components/TasksPanel'
 import DocumentRegister from '../components/DocumentRegister'
+import MessageComposer from '../components/MessageComposer'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -24,6 +25,7 @@ export default function ProjectDetailPage() {
   const [files, setFiles] = useState([])
   const [messages, setMessages] = useState([])
   const [tasks, setTasks] = useState([])
+  const [companies, setCompanies] = useState([])
   const [tab, setTab] = useState(searchParams.get('tab') || 'overview')
   const [msgText, setMsgText] = useState('')
   const [loading, setLoading] = useState(true)
@@ -50,7 +52,7 @@ export default function ProjectDetailPage() {
 
   async function fetchAll() {
     setLoading(true)
-    await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchMessages(), fetchTasks()])
+    await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchMessages(), fetchTasks(), fetchCompanies()])
     setLoading(false)
   }
   async function fetchProject() {
@@ -75,6 +77,11 @@ export default function ProjectDetailPage() {
       .eq('project_id', id).order('created_at')
     setMessages(data || [])
   }
+  async function fetchCompanies() {
+    const { data } = await supabase.from('companies').select('id,name,discipline').order('name')
+    setCompanies(data || [])
+  }
+
   async function fetchTasks() {
     const { data } = await supabase.from('tasks')
       .select('*, assigned_company:companies(name), assigned_user:profiles!tasks_assigned_user_id_fkey(full_name)')
@@ -307,16 +314,28 @@ export default function ProjectDetailPage() {
       {/* ── MESSAGES TAB ───────────────────────────────────────── */}
       {tab === 'messages' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {messages.map(m => {
               const isMe = m.user_id === profile?.id
               const init = m.profiles?.avatar_initials || m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?'
+              // Recipient tag
+              let recipientTag = null
+              if (!isMe && m.recipient_type && m.recipient_type !== 'everyone') {
+                recipientTag = (
+                  <span style={{ fontSize: '10px', background: '#FAEEDA', color: '#854F0B', padding: '1px 6px', borderRadius: '10px', marginLeft: '4px' }}>
+                    {m.recipient_type === 'company' ? 'Company' : 'Direct'}
+                  </span>
+                )
+              }
               return (
                 <div key={m.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: isMe ? 'row-reverse' : 'row' }}>
                   <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isMe ? '#EEEDFE' : '#E1F5EE', color: isMe ? '#534AB7' : '#0F6E56', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '600', flexShrink: 0 }}>{init}</div>
                   <div style={{ maxWidth: '70%' }}>
-                    <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '3px', textAlign: isMe ? 'right' : 'left' }}>
-                      {isMe ? 'You' : m.profiles?.full_name} · {format(new Date(m.created_at), 'd MMM, h:mm a')}
+                    <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '3px', textAlign: isMe ? 'right' : 'left', display: 'flex', alignItems: 'center', gap: '4px', flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                      <span>{isMe ? 'You' : m.profiles?.full_name}</span>
+                      <span>·</span>
+                      <span>{format(new Date(m.created_at), 'd MMM, h:mm a')}</span>
+                      {recipientTag}
                     </div>
                     <div style={{ background: isMe ? '#EEEDFE' : '#F3F1EB', padding: '10px 13px', borderRadius: isMe ? '12px 2px 12px 12px' : '2px 12px 12px 12px', fontSize: '13px', color: '#1a1a1a', lineHeight: '1.5' }}>
                       {m.body}
@@ -325,19 +344,15 @@ export default function ProjectDetailPage() {
                 </div>
               )
             })}
-            {messages.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '40px' }}>No messages yet.</div>}
+            {messages.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '40px' }}>No messages yet. Use the composer below to start a conversation.</div>}
             <div ref={msgEnd} />
           </div>
-          <div style={{ padding: '12px 20px', borderTop: '0.5px solid #ECEAE4', display: 'flex', gap: '8px' }}>
-            <input
-              style={{ flex: 1, padding: '9px 12px', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#FAFAF8', fontFamily: 'inherit', color: '#1a1a1a' }}
-              placeholder="Message the project team…"
-              value={msgText}
-              onChange={e => setMsgText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            />
-            <button onClick={sendMessage} style={S.btnPrimary}><Send size={14} /></button>
-          </div>
+          <MessageComposer
+            projectId={id}
+            members={members}
+            companies={companies}
+            onSent={fetchMessages}
+          />
         </div>
       )}
 

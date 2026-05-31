@@ -19,7 +19,7 @@ export default function TasksAdminPage() {
   async function fetchTasks() {
     setLoading(true)
     const { data } = await supabase.from('tasks')
-      .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles!tasks_assigned_user_id_fkey(id,full_name), depends_on_task:tasks!tasks_depends_on_fkey(id,title,status)')
+      .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles(id,full_name), depends_on_task:tasks(id,title,status)')
       .order('deadline', { ascending: true, nullsFirst: false })
     setTasks(data || [])
     setLoading(false)

@@ -12,6 +12,7 @@ import InviteModal, { UploadModal, LinkModal } from '../components/InviteModal'
 import NewProjectModal, { Modal } from '../components/NewProjectModal'
 import CompanyAccessPanel from '../components/CompanyAccessPanel'
 import TasksPanel from '../components/TasksPanel'
+import DocumentRegister from '../components/DocumentRegister'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -261,44 +262,18 @@ export default function ProjectDetailPage() {
       {/* ── FILES TAB ──────────────────────────────────────────── */}
       {tab === 'files' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <button onClick={() => setShowUpload(true)} style={S.btnPrimary}><Upload size={13} /> Upload file</button>
-            <button onClick={() => setShowLink(true)} style={S.btn}><Link2 size={13} /> Add OneDrive link</button>
-            {project.onedrive_url && (
+          {project.onedrive_url && (
+            <div style={{ marginBottom: '14px' }}>
               <button onClick={() => window.open(project.onedrive_url, '_blank')} style={S.btn}>
-                <ExternalLink size={13} /> Open OneDrive folder
+                <ExternalLink size={13} /> Open project OneDrive folder
               </button>
-            )}
-          </div>
-          {['Project Brief', 'Drawings', 'Consultant Docs', 'General'].map(cat => {
-            const catFiles = files.filter(f => f.category === cat)
-            if (!catFiles.length) return null
-            return (
-              <div key={cat} style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '500', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>{cat}</div>
-                {catFiles.map(f => {
-                  const ext = f.file_type || 'doc'
-                  const tc = FILE_TYPE_COLORS[ext] || { bg: '#F1EFE8', color: '#5F5E5A' }
-                  return (
-                    <div key={f.id} style={S.fileRow} onClick={() => openFile(f)}
-                      onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <FileText size={15} color="#aaa" />
-                      <span style={{ flex: 1, fontSize: '13px', color: '#1a1a1a' }}>{f.name}</span>
-                      <span style={{ ...S.badge, background: tc.bg, color: tc.color, fontSize: '10px' }}>{ext.toUpperCase()}</span>
-                      {f.onedrive_url && <ExternalLink size={12} color="#aaa" />}
-                      {(isAdmin || f.uploaded_by === profile?.id) && (
-                        <button onClick={e => { e.stopPropagation(); deleteFile(f.id, f.storage_path) }} style={{ ...S.iconBtn, color: '#ddd' }}>
-                          <Trash2 size={12} />
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
-          {files.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '40px' }}>No files yet.</div>}
+            </div>
+          )}
+          <DocumentRegister
+            projectId={id}
+            projectCode={project.code}
+            isLead={isLead}
+          />
         </div>
       )}
 

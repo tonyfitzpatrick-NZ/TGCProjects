@@ -1,63 +1,88 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase, STAGES } from '../lib/supabase'
 import { Modal } from './NewProjectModal'
-import { X } from 'lucide-react'
 
-// ── INVITE CONSULTANT TO PROJECT ──────────────────────────────
+const CONSULTANT_TYPES = [
+  'Structural Engineer', 'Fire Designer', 'Interior Designer',
+  'Remote Arch. Team', 'Quantity Surveyor', 'Civil Engineer',
+  'Geotechnical Engineer', 'Project Manager', 'Other'
+]
+
+// ── INVITE CONSULTANT TO PROJECT ─────────────────────────────
 export default function InviteModal({ projectId, onClose, onAdded }) {
-  const [email, setEmail] = useState('')
+  const [users, setUsers] = useState([])
+  const [selectedUserId, setSelectedUserId] = useState('')
   const [consultantType, setConsultantType] = useState('')
-  const [deadline, setDeadline] = useState('')
   const [role, setRole] = useState('consultant')
+  const [deadline, setDeadline] = useState('')
+  const [dateEngaged, setDateEngaged] = useState('')
+  const [dateDocsSent, setDateDocsSent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const TYPES = ['Structural Engineer', 'Fire Designer', 'Interior Designer',
-    'Remote Arch. Team', 'Quantity Surveyor', 'Civil Engineer', 'Other']
+  useEffect(() => {
+    supabase.from('profiles')
+      .select('id, full_name, avatar_initials, companies(name), discipline')
+      .order('full_name')
+      .then(({ data }) => setUsers(data || []))
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!selectedUserId) { setError('Please select a user.'); return }
     setLoading(true); setError('')
-    const { data: userId, error: rpcErr } = await supabase.rpc('get_user_id_by_email', { email_input: email })
-    if (rpcErr || !userId) {
-      setError('User not found. Make sure they have an account first.')
-      setLoading(false); return
-    }
-    const { error: insertErr } = await supabase.from('project_members').insert({
-      project_id: projectId, user_id: userId,
-      role, consultant_type: consultantType, deadline: deadline || null
+    const { error: err } = await supabase.from('project_members').insert({
+      project_id: projectId,
+      user_id: selectedUserId,
+      role,
+      consultant_type: consultantType,
+      deadline: deadline || null,
+      date_engaged: dateEngaged || null,
+      date_docs_sent: dateDocsSent || null
     })
-    if (insertErr) { setError(insertErr.message); setLoading(false); return }
+    if (err) { setError(err.message); setLoading(false); return }
     onAdded(); onClose()
   }
 
   return (
-    <Modal title="Add consultant" onClose={onClose}>
+    <Modal title="Add team member" onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <Field label="Email address *">
-          <input style={S.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="engineer@company.com" required />
-        </Field>
-        <Field label="Role type">
-          <select style={S.input} value={consultantType} onChange={e => setConsultantType(e.target.value)}>
-            <option value="">Select…</option>
-            {TYPES.map(t => <option key={t}>{t}</option>)}
+        <Field label="Select user *">
+          <select style={S.input} value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} required>
+            <option value="">Choose a user…</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.full_name}{u.companies?.name ? ` — ${u.companies.name}` : ''}{u.discipline ? ` (${u.discipline})` : ''}
+              </option>
+            ))}
           </select>
         </Field>
         <div style={{ display: 'flex', gap: '12px' }}>
+          <Field label="Consultant type">
+            <select style={S.input} value={consultantType} onChange={e => setConsultantType(e.target.value)}>
+              <option value="">Select…</option>
+              {CONSULTANT_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </Field>
           <Field label="Portal role">
             <select style={S.input} value={role} onChange={e => setRole(e.target.value)}>
               <option value="consultant">Consultant</option>
               <option value="lead">Project lead</option>
             </select>
           </Field>
-          <Field label="Deadline (optional)">
-            <input style={S.input} type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Field label="Date engaged">
+            <input style={S.input} type="date" value={dateEngaged} onChange={e => setDateEngaged(e.target.value)} />
+          </Field>
+          <Field label="Docs sent date">
+            <input style={S.input} type="date" value={dateDocsSent} onChange={e => setDateDocsSent(e.target.value)} />
           </Field>
         </div>
+        <Field label="Deadline">
+          <input style={S.input} type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
+        </Field>
         {error && <div style={S.error}>{error}</div>}
-        <p style={{ fontSize: '12px', color: '#aaa', lineHeight: '1.5' }}>
-          The user must already have an account. Admins can create accounts via the Users & Access page.
-        </p>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={S.btnSec}>Cancel</button>
           <button type="submit" style={S.btnPrimary} disabled={loading}>{loading ? 'Adding…' : 'Add to project'}</button>
@@ -67,7 +92,7 @@ export default function InviteModal({ projectId, onClose, onAdded }) {
   )
 }
 
-// ── UPLOAD MODAL ──────────────────────────────────────────────
+// ── UPLOAD MODAL ─────────────────────────────────────────────
 export function UploadModal({ projectId, onClose, onUploaded }) {
   const [file, setFile] = useState(null)
   const [category, setCategory] = useState('General')
@@ -112,7 +137,7 @@ export function UploadModal({ projectId, onClose, onUploaded }) {
   )
 }
 
-// ── ONEDRIVE LINK MODAL ────────────────────────────────────────
+// ── ONEDRIVE LINK MODAL ───────────────────────────────────────
 export function LinkModal({ projectId, onClose, onAdded }) {
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
@@ -165,53 +190,11 @@ export function LinkModal({ projectId, onClose, onAdded }) {
   )
 }
 
-// ── EDIT PROJECT MODAL ─────────────────────────────────────────
+// ── EDIT PROJECT MODAL ────────────────────────────────────────
+// EditProjectModal is now handled directly in ProjectDetailPage
+// by passing project prop to NewProjectModal
 export function EditProjectModal({ project, onClose, onUpdated }) {
-  const [form, setForm] = useState({ ...project })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
-
-  async function handleSubmit(e) {
-    e.preventDefault(); setLoading(true); setError('')
-    const { error: err } = await supabase.from('projects').update({
-      name: form.name, code: form.code, client_name: form.client_name,
-      address: form.address, stage: form.stage, progress: Number(form.progress),
-      onedrive_url: form.onedrive_url, description: form.description,
-      updated_at: new Date().toISOString()
-    }).eq('id', project.id)
-    if (err) { setError(err.message); setLoading(false); return }
-    onUpdated()
-  }
-
-  return (
-    <Modal title="Edit project" onClose={onClose}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <Field label="Project name *"><input style={S.input} value={form.name} onChange={e => set('name', e.target.value)} required /></Field>
-          <Field label="Code *"><input style={{ ...S.input, width: '130px' }} value={form.code} onChange={e => set('code', e.target.value)} required /></Field>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <Field label="Client name"><input style={S.input} value={form.client_name || ''} onChange={e => set('client_name', e.target.value)} /></Field>
-          <Field label="Stage">
-            <select style={S.input} value={form.stage} onChange={e => set('stage', e.target.value)}>
-              {STAGES.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </Field>
-        </div>
-        <Field label={`Progress: ${form.progress}%`}>
-          <input type="range" min="0" max="100" step="1" value={form.progress} onChange={e => set('progress', e.target.value)} style={{ width: '100%' }} />
-        </Field>
-        <Field label="Address"><input style={S.input} value={form.address || ''} onChange={e => set('address', e.target.value)} /></Field>
-        <Field label="OneDrive folder URL"><input style={S.input} value={form.onedrive_url || ''} onChange={e => set('onedrive_url', e.target.value)} /></Field>
-        {error && <div style={S.error}>{error}</div>}
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} style={S.btnSec}>Cancel</button>
-          <button type="submit" style={S.btnPrimary} disabled={loading}>{loading ? 'Saving…' : 'Save changes'}</button>
-        </div>
-      </form>
-    </Modal>
-  )
+  return <div style={{ display: 'none' }} />
 }
 
 function Field({ label, children }) {
@@ -224,6 +207,6 @@ function Field({ label, children }) {
 const S = {
   input: { padding: '8px 10px', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#FAFAF8', fontFamily: 'inherit', color: '#1a1a1a', width: '100%', boxSizing: 'border-box' },
   error: { background: '#FAECE7', color: '#993C1D', fontSize: '13px', padding: '10px 12px', borderRadius: '8px' },
-  btnPrimary: { padding: '8px 18px', background: '#534AB7', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' },
+  btnPrimary: { padding: '8px 18px', background: '#1B2B4B', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' },
   btnSec: { padding: '8px 18px', background: 'transparent', color: '#666', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }
 }

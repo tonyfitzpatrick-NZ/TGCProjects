@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import logo from '../lib/logo'
 import {
   LayoutGrid, Clock, Bell, FolderOpen, Upload,
-  Users, Settings, LogOut, CheckSquare
+  Users, Settings, LogOut, CheckSquare, BarChart2
 } from 'lucide-react'
 
 const NAVY = '#1B2B4B'
@@ -58,6 +58,7 @@ export default function Layout({ children }) {
           <SectionLabel>Workspace</SectionLabel>
           <NavItem icon={LayoutGrid} label="All Projects" path="/" />
           <NavItem icon={CheckSquare} label="Tasks" path="/tasks" />
+          <NavItem icon={BarChart2} label="Consultant Report" path="/consultants" />
           <NavItem icon={Clock} label="Deadlines" path="/deadlines" />
           <NavItem icon={Bell} label="Notifications" path="/notifications" />
 

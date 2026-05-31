@@ -1,23 +1,44 @@
 import { useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { X, Upload, Home } from 'lucide-react'
+import { X, Home } from 'lucide-react'
 import {
   STAGES, PROJECT_STATUSES, WIND_ZONES, EARTHQUAKE_ZONES,
   EXPOSURE_ZONES, NZ_TERRITORIAL_AUTHORITIES
 } from '../lib/constants'
 
-export default function NewProjectModal({ onClose, onCreated }) {
+// Works for both New (no project prop) and Edit (project prop passed)
+export default function NewProjectModal({ onClose, onCreated, project }) {
   const { profile } = useAuth()
+  const isEdit = !!project
   const [form, setForm] = useState({
-    name: '', code: '', client_name: '', address: '', stage: 'Concept',
-    status: 'Active', progress: 0, onedrive_url: '', description: '',
-    legal_description: '', site_area: '', wind_zone: '', earthquake_zone: '',
-    exposure_zone: '', territorial_authority: '', ta_zone: '',
-    building_consent_authority: '', project_deadline: ''
+    name: project?.name || '',
+    code: project?.code || '',
+    client_name: project?.client_name || '',
+    address: project?.address || '',
+    stage: project?.stage || 'Concept',
+    status: project?.status || 'Active',
+    progress: project?.progress || 0,
+    onedrive_url: project?.onedrive_url || '',
+    description: project?.description || '',
+    legal_description: project?.legal_description || '',
+    site_area: project?.site_area || '',
+    wind_zone: project?.wind_zone || '',
+    earthquake_zone: project?.earthquake_zone || '',
+    exposure_zone: project?.exposure_zone || '',
+    territorial_authority: project?.territorial_authority || '',
+    ta_zone: project?.ta_zone || '',
+    building_consent_authority: project?.building_consent_authority || '',
+    project_deadline: project?.project_deadline || ''
   })
   const [coverFile, setCoverFile] = useState(null)
-  const [coverPreview, setCoverPreview] = useState(null)
+  const [coverPreview, setCoverPreview] = useState(() => {
+    if (project?.cover_image_path) {
+      const { data } = supabase.storage.from('project-covers').getPublicUrl(project.cover_image_path)
+      return data?.publicUrl || null
+    }
+    return null
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef()
@@ -34,9 +55,9 @@ export default function NewProjectModal({ onClose, onCreated }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.name || !form.code) { setError('Project name and code are required.'); return }
-    setLoading(true)
+    setLoading(true); setError('')
 
-    let cover_image_path = null
+    let cover_image_path = project?.cover_image_path || null
     if (coverFile) {
       const ext = coverFile.name.split('.').pop()
       const path = `${Date.now()}.${ext}`
@@ -44,38 +65,54 @@ export default function NewProjectModal({ onClose, onCreated }) {
       if (!uploadErr) cover_image_path = path
     }
 
-    const { data, error: err } = await supabase.from('projects').insert({
-      ...form, progress: Number(form.progress),
-      cover_image_path, created_by: profile.id,
+    const payload = {
+      ...form,
+      progress: Number(form.progress),
+      cover_image_path,
       project_deadline: form.project_deadline || null
-    }).select().single()
+    }
 
-    if (err) { setError(err.message); setLoading(false); return }
-    await supabase.from('project_members').insert({
-      project_id: data.id, user_id: profile.id, role: 'lead', consultant_type: 'Project Lead'
-    })
+    if (isEdit) {
+      const { error: err } = await supabase.from('projects').update({
+        ...payload, updated_at: new Date().toISOString()
+      }).eq('id', project.id)
+      if (err) { setError(err.message); setLoading(false); return }
+    } else {
+      const { data, error: err } = await supabase.from('projects').insert({
+        ...payload, created_by: profile.id
+      }).select().single()
+      if (err) { setError(err.message); setLoading(false); return }
+      await supabase.from('project_members').insert({
+        project_id: data.id, user_id: profile.id, role: 'lead', consultant_type: 'Project Lead'
+      })
+    }
     onCreated(); onClose()
   }
 
   return (
-    <Modal title="New project" onClose={onClose}>
+    <Modal title={isEdit ? `Edit — ${project.name}` : 'New project'} onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-        {/* Cover image */}
+        {/* Cover image + name/code */}
         <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
           <div onClick={() => fileRef.current?.click()} style={{
             width: '80px', height: '80px', borderRadius: '10px', flexShrink: 0,
             background: coverPreview ? 'transparent' : '#F0EEE9', border: '0.5px dashed #D0CEC6',
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden'
           }}>
-            {coverPreview ? <img src={coverPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {coverPreview
+              ? <img src={coverPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : <div style={{ textAlign: 'center' }}><Home size={20} color="#ccc" /><div style={{ fontSize: '10px', color: '#ccc', marginTop: '4px' }}>Add photo</div></div>}
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleCoverSelect} style={{ display: 'none' }} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <Row>
-              <Field label="Project name *"><input style={S.input} value={form.name} onChange={e => set('name', e.target.value)} placeholder="High Street Heritage" required /></Field>
-              <Field label="Project code *" w="150px"><input style={{ ...S.input, width: '150px' }} value={form.code} onChange={e => set('code', e.target.value)} placeholder="TGC-2025-001" required /></Field>
+              <Field label="Project name *">
+                <input style={S.input} value={form.name} onChange={e => set('name', e.target.value)} placeholder="High Street Heritage" required />
+              </Field>
+              <Field label="Project code *" w="150px">
+                <input style={{ ...S.input, width: '150px' }} value={form.code} onChange={e => set('code', e.target.value)} placeholder="TGC-2025-001" required />
+              </Field>
             </Row>
             <Row>
               <Field label="Status">
@@ -94,13 +131,23 @@ export default function NewProjectModal({ onClose, onCreated }) {
 
         <SectionHeading>Project details</SectionHeading>
         <Row>
-          <Field label="Client name"><input style={S.input} value={form.client_name} onChange={e => set('client_name', e.target.value)} /></Field>
-          <Field label="Project deadline" w="160px"><input style={{ ...S.input, width: '160px' }} type="date" value={form.project_deadline} onChange={e => set('project_deadline', e.target.value)} /></Field>
+          <Field label="Client name">
+            <input style={S.input} value={form.client_name} onChange={e => set('client_name', e.target.value)} />
+          </Field>
+          <Field label="Project deadline" w="160px">
+            <input style={{ ...S.input, width: '160px' }} type="date" value={form.project_deadline} onChange={e => set('project_deadline', e.target.value)} />
+          </Field>
         </Row>
-        <Field label="Site address"><input style={S.input} value={form.address} onChange={e => set('address', e.target.value)} placeholder="204 High Street, Dunedin" /></Field>
-        <Field label="Legal description"><input style={S.input} value={form.legal_description} onChange={e => set('legal_description', e.target.value)} placeholder="Lot 1 DP 12345" /></Field>
+        <Field label="Site address">
+          <input style={S.input} value={form.address} onChange={e => set('address', e.target.value)} placeholder="204 High Street, Dunedin" />
+        </Field>
+        <Field label="Legal description">
+          <input style={S.input} value={form.legal_description} onChange={e => set('legal_description', e.target.value)} placeholder="Lot 1 DP 12345" />
+        </Field>
         <Row>
-          <Field label="Site area (m²)"><input style={S.input} value={form.site_area} onChange={e => set('site_area', e.target.value)} placeholder="450" /></Field>
+          <Field label="Site area (m²)">
+            <input style={S.input} value={form.site_area} onChange={e => set('site_area', e.target.value)} placeholder="450" />
+          </Field>
           <Field label="Territorial authority">
             <select style={S.input} value={form.territorial_authority} onChange={e => set('territorial_authority', e.target.value)}>
               <option value="">Select TA…</option>
@@ -109,8 +156,12 @@ export default function NewProjectModal({ onClose, onCreated }) {
           </Field>
         </Row>
         <Row>
-          <Field label="TA zone"><input style={S.input} value={form.ta_zone} onChange={e => set('ta_zone', e.target.value)} placeholder="e.g. Residential 1" /></Field>
-          <Field label="Building consent authority"><input style={S.input} value={form.building_consent_authority} onChange={e => set('building_consent_authority', e.target.value)} placeholder="e.g. Dunedin City Council" /></Field>
+          <Field label="TA zone">
+            <input style={S.input} value={form.ta_zone} onChange={e => set('ta_zone', e.target.value)} placeholder="e.g. Residential 1" />
+          </Field>
+          <Field label="Building consent authority">
+            <input style={S.input} value={form.building_consent_authority} onChange={e => set('building_consent_authority', e.target.value)} />
+          </Field>
         </Row>
 
         <SectionHeading>NZS 3604 Zones</SectionHeading>
@@ -149,7 +200,9 @@ export default function NewProjectModal({ onClose, onCreated }) {
         {error && <div style={S.error}>{error}</div>}
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
           <button type="button" onClick={onClose} style={S.btnSec}>Cancel</button>
-          <button type="submit" style={S.btnPrimary} disabled={loading}>{loading ? 'Creating…' : 'Create project'}</button>
+          <button type="submit" style={S.btnPrimary} disabled={loading}>
+            {loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save changes' : 'Create project')}
+          </button>
         </div>
       </form>
     </Modal>

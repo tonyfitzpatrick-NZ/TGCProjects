@@ -23,7 +23,7 @@ export default function TasksPanel({ projectId, isLead }) {
     setLoading(true)
     const [tRes, cRes, uRes] = await Promise.all([
       supabase.from('tasks')
-        .select('*, assigned_company:companies(id,name), assigned_user:profiles!tasks_assigned_user_id_fkey(id,full_name,avatar_initials), depends_on_task:tasks!tasks_depends_on_fkey(id,title,status), created_by_profile:profiles!tasks_created_by_fkey(full_name)')
+        .select('*, assigned_company:companies(id,name), assigned_user:profiles(id,full_name,avatar_initials), depends_on_task:tasks(id,title,status)')
         .eq('project_id', projectId)
         .order('created_at'),
       supabase.from('companies').select('id,name,discipline').order('name'),

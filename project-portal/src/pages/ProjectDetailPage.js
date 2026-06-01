@@ -40,8 +40,13 @@ export default function ProjectDetailPage() {
 
   async function fetchAll() {
     setLoading(true)
-    await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchTasks(), fetchCompanies()])
-    setLoading(false)
+    try {
+      await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchTasks(), fetchCompanies()])
+    } catch (err) {
+      console.error('fetchAll error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
   async function fetchProject() {
     const { data } = await supabase.from('projects').select('*').eq('id', id).single()
@@ -63,10 +68,9 @@ export default function ProjectDetailPage() {
     const { data } = await supabase.from('companies').select('id,name,discipline').order('name')
     setCompanies(data || [])
   }
-
   async function fetchTasks() {
     const { data } = await supabase.from('tasks')
-      .select('*, assigned_company:companies(name), assigned_user:profiles!tasks_assigned_user_id_fkey(full_name)')
+      .select('*, assigned_company:companies(name), assigned_user:profiles(full_name)')
       .eq('project_id', id).order('created_at')
     setTasks(data || [])
   }

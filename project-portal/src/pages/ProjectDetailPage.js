@@ -13,7 +13,7 @@ import NewProjectModal, { Modal } from '../components/NewProjectModal'
 import CompanyAccessPanel from '../components/CompanyAccessPanel'
 import TasksPanel from '../components/TasksPanel'
 import DocumentRegister from '../components/DocumentRegister'
-import MessageComposer from '../components/MessageComposer'
+import MessagesPanel from '../components/MessagesPanel'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -23,36 +23,24 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState(null)
   const [members, setMembers] = useState([])
   const [files, setFiles] = useState([])
-  const [messages, setMessages] = useState([])
   const [tasks, setTasks] = useState([])
   const [companies, setCompanies] = useState([])
   const [tab, setTab] = useState(searchParams.get('tab') || 'overview')
-  const [msgText, setMsgText] = useState('')
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [showLink, setShowLink] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
-  const msgEnd = useRef(null)
   const isAdmin = profile?.role === 'admin'
   const isLead = isAdmin || members.find(m => m.user_id === profile?.id)?.role === 'lead'
 
-  useEffect(() => { fetchAll() }, [id])
-  useEffect(() => { msgEnd.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
-  useEffect(() => {
-    const sub = supabase.channel(`proj-${id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'project_messages', filter: `project_id=eq.${id}` },
-        payload => setMessages(prev => [...prev, payload.new]))
-      .subscribe()
-    return () => supabase.removeChannel(sub)
-  }, [id])
 
   function switchTab(t) { setTab(t); setSearchParams({ tab: t }) }
 
   async function fetchAll() {
     setLoading(true)
-    await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchMessages(), fetchTasks(), fetchCompanies()])
+    await Promise.all([fetchProject(), fetchMembers(), fetchFiles(), fetchTasks(), fetchCompanies()])
     setLoading(false)
   }
   async function fetchProject() {
@@ -71,12 +59,6 @@ export default function ProjectDetailPage() {
       .eq('project_id', id).order('created_at', { ascending: false })
     setFiles(data || [])
   }
-  async function fetchMessages() {
-    const { data } = await supabase.from('project_messages')
-      .select('*, profiles(full_name, avatar_initials)')
-      .eq('project_id', id).order('created_at')
-    setMessages(data || [])
-  }
   async function fetchCompanies() {
     const { data } = await supabase.from('companies').select('id,name,discipline').order('name')
     setCompanies(data || [])
@@ -89,11 +71,6 @@ export default function ProjectDetailPage() {
     setTasks(data || [])
   }
 
-  async function sendMessage() {
-    if (!msgText.trim()) return
-    await supabase.from('project_messages').insert({ project_id: id, user_id: profile.id, body: msgText.trim() })
-    setMsgText('')
-  }
 
   async function deleteFile(fileId, storagePath) {
     if (storagePath) await supabase.storage.from('project-files').remove([storagePath])
@@ -246,21 +223,12 @@ export default function ProjectDetailPage() {
               {members.length === 0 && <div style={S.emptyCard}>No team members yet</div>}
             </div>
 
-            {/* Messages card */}
+            {/* Messages card — shows thread count, click to go to messages tab */}
             <div style={{ ...S.card, cursor: 'pointer', gridColumn: 'span 2' }} onClick={() => switchTab('messages')}>
-              <CardHeader title="Recent Messages" icon={<MessageSquare size={14} />} count={messages.length} onMore={() => switchTab('messages')} />
-              {messages.slice(-5).reverse().map(m => {
-                const isMe = m.user_id === profile?.id
-                return (
-                  <div key={m.id} style={{ padding: '6px 0', borderBottom: '0.5px solid #F3F1EB' }}>
-                    <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '2px' }}>
-                      {isMe ? 'You' : m.profiles?.full_name} · {format(new Date(m.created_at), 'd MMM, h:mm a')}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#1a1a1a', lineHeight: '1.5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.body}</div>
-                  </div>
-                )
-              })}
-              {messages.length === 0 && <div style={S.emptyCard}>No messages yet</div>}
+              <CardHeader title="Message Threads" icon={<MessageSquare size={14} />} onMore={() => switchTab('messages')} />
+              <div style={{ fontSize: '13px', color: '#aaa', textAlign: 'center', padding: '16px 0' }}>
+                Click to view message threads for this project
+              </div>
             </div>
           </div>
         </div>
@@ -313,45 +281,11 @@ export default function ProjectDetailPage() {
 
       {/* ── MESSAGES TAB ───────────────────────────────────────── */}
       {tab === 'messages' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {messages.map(m => {
-              const isMe = m.user_id === profile?.id
-              const init = m.profiles?.avatar_initials || m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?'
-              // Recipient tag
-              let recipientTag = null
-              if (!isMe && m.recipient_type && m.recipient_type !== 'everyone') {
-                recipientTag = (
-                  <span style={{ fontSize: '10px', background: '#FAEEDA', color: '#854F0B', padding: '1px 6px', borderRadius: '10px', marginLeft: '4px' }}>
-                    {m.recipient_type === 'company' ? 'Company' : 'Direct'}
-                  </span>
-                )
-              }
-              return (
-                <div key={m.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: isMe ? 'row-reverse' : 'row' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isMe ? '#EEEDFE' : '#E1F5EE', color: isMe ? '#534AB7' : '#0F6E56', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '600', flexShrink: 0 }}>{init}</div>
-                  <div style={{ maxWidth: '70%' }}>
-                    <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '3px', textAlign: isMe ? 'right' : 'left', display: 'flex', alignItems: 'center', gap: '4px', flexDirection: isMe ? 'row-reverse' : 'row' }}>
-                      <span>{isMe ? 'You' : m.profiles?.full_name}</span>
-                      <span>·</span>
-                      <span>{format(new Date(m.created_at), 'd MMM, h:mm a')}</span>
-                      {recipientTag}
-                    </div>
-                    <div style={{ background: isMe ? '#EEEDFE' : '#F3F1EB', padding: '10px 13px', borderRadius: isMe ? '12px 2px 12px 12px' : '2px 12px 12px 12px', fontSize: '13px', color: '#1a1a1a', lineHeight: '1.5' }}>
-                      {m.body}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-            {messages.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '40px' }}>No messages yet. Use the composer below to start a conversation.</div>}
-            <div ref={msgEnd} />
-          </div>
-          <MessageComposer
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <MessagesPanel
             projectId={id}
             members={members}
-            companies={companies}
-            onSent={fetchMessages}
+            isLead={isLead}
           />
         </div>
       )}

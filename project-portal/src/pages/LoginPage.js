@@ -21,10 +21,9 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
+        {/* Logo — on white, navy TGC is fully visible */}
         <div style={styles.brand}>
-          <div style={styles.logoWrap}>
-            <img src={logo} alt="TGC Homes" style={styles.logo} />
-          </div>
+          <img src={logo} alt="TGC Homes" style={styles.logo} />
         </div>
 
         <div style={styles.divider} />
@@ -97,16 +96,8 @@ const styles = {
     justifyContent: 'center',
     marginBottom: '24px'
   },
-  logoWrap: {
-    background: NAVY,
-    borderRadius: '12px',
-    padding: '14px 24px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
   logo: {
-    height: '52px',
+    height: '64px',
     width: 'auto',
     objectFit: 'contain'
   },

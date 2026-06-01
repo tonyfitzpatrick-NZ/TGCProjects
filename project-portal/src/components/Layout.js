@@ -46,8 +46,10 @@ export default function Layout({ children }) {
       <div style={{ width: '210px', flexShrink: 0, background: NAVY, display: 'flex', flexDirection: 'column' }}>
 
         {/* Logo */}
-        <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <img src={logo} alt="TGC Homes" style={{ height: '44px', width: 'auto', objectFit: 'contain' }} />
+        <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 12px', display: 'inline-flex', alignItems: 'center' }}>
+            <img src={logo} alt="TGC Homes" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
+          </div>
           <div style={{ fontSize: '11px', color: GOLD, marginTop: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '500' }}>
             Project Portal
           </div>

@@ -58,7 +58,6 @@ export default function Layout({ children }) {
           <SectionLabel>Workspace</SectionLabel>
           <NavItem icon={LayoutGrid} label="All Projects" path="/" />
           <NavItem icon={CheckSquare} label="Tasks" path="/tasks" />
-          <NavItem icon={BarChart2} label="Consultant Report" path="/consultants" />
           <NavItem icon={Clock} label="Deadlines" path="/deadlines" />
           <NavItem icon={Bell} label="Notifications" path="/notifications" />
 
@@ -67,6 +66,7 @@ export default function Layout({ children }) {
 
           {(isAdmin || isLead) && <>
             <SectionLabel>Admin</SectionLabel>
+            <NavItem icon={BarChart2} label="Consultant Report" path="/consultants" />
             <NavItem icon={Users} label="Users & Access" path="/admin/users" />
             <NavItem icon={Settings} label="Settings" path="/admin/settings" />
           </>}

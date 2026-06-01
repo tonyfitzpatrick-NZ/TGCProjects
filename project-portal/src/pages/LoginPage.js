@@ -22,7 +22,9 @@ export default function LoginPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.brand}>
-          <img src={logo} alt="TGC Homes" style={styles.logo} />
+          <div style={styles.logoWrap}>
+            <img src={logo} alt="TGC Homes" style={styles.logo} />
+          </div>
         </div>
 
         <div style={styles.divider} />
@@ -95,8 +97,16 @@ const styles = {
     justifyContent: 'center',
     marginBottom: '24px'
   },
+  logoWrap: {
+    background: NAVY,
+    borderRadius: '12px',
+    padding: '14px 24px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   logo: {
-    height: '60px',
+    height: '52px',
     width: 'auto',
     objectFit: 'contain'
   },

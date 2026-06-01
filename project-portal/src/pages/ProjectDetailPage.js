@@ -35,6 +35,7 @@ export default function ProjectDetailPage() {
   const isAdmin = profile?.role === 'admin'
   const isLead = isAdmin || members.find(m => m.user_id === profile?.id)?.role === 'lead'
 
+  useEffect(() => { fetchAll() }, [id])
 
   function switchTab(t) { setTab(t); setSearchParams({ tab: t }) }
 

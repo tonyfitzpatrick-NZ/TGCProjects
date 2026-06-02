@@ -14,6 +14,7 @@ import CompanyAccessPanel from '../components/CompanyAccessPanel'
 import TasksPanel from '../components/TasksPanel'
 import DocumentRegister from '../components/DocumentRegister'
 import MessagesPanel from '../components/MessagesPanel'
+import ApplicationsPanel from '../components/ApplicationsPanel'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -98,7 +99,7 @@ export default function ProjectDetailPage() {
     ? supabase.storage.from('project-covers').getPublicUrl(project.cover_image_path).data?.publicUrl
     : null
 
-  const TABS = ['overview', 'files', 'tasks', 'team', 'messages']
+  const TABS = ['overview', 'files', 'tasks', 'applications', 'team', 'messages']
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -281,6 +282,17 @@ export default function ProjectDetailPage() {
             ))}
           </div>
           {members.length === 0 && <div style={{ textAlign: 'center', color: '#ccc', padding: '20px', fontSize: '13px' }}>No individual members added yet.</div>}
+        </div>
+      )}
+
+      {/* ── APPLICATIONS TAB ────────────────────────────────────── */}
+      {tab === 'applications' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+          <ApplicationsPanel
+            projectId={id}
+            projectCode={project.code}
+            isLead={isLead}
+          />
         </div>
       )}
 

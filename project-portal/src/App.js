@@ -12,6 +12,7 @@ import UploadsPage from './pages/UploadsPage'
 import TasksAdminPage from './pages/TasksAdminPage'
 import ConsultantReportPage from './pages/ConsultantReportPage'
 import DocumentsPage from './pages/DocumentsPage'
+import AdminApplicationTemplatesPage from './pages/AdminApplicationTemplatesPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -44,6 +45,7 @@ function App() {
                   <Route path="/onedrive" element={<OneDrivePage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/admin/settings" element={<SettingsPage />} />
+                  <Route path="/admin/applications" element={<AdminApplicationTemplatesPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

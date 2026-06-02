@@ -85,6 +85,28 @@ export default function NewProjectModal({ onClose, onCreated, project }) {
       await supabase.from('project_members').insert({
         project_id: data.id, user_id: profile.id, role: 'lead', consultant_type: 'Project Lead'
       })
+      // Auto-populate applications from active templates
+      const { data: templates } = await supabase
+        .from('application_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+      if (templates?.length) {
+        await supabase.from('project_applications').insert(
+          templates.map((t, i) => ({
+            project_id: data.id,
+            template_id: t.id,
+            name: t.name,
+            description: t.description,
+            agency: t.agency,
+            agency_website: t.agency_website,
+            stage: t.stage,
+            status: 'Not Required',
+            is_required: false,
+            sort_order: i
+          }))
+        )
+      }
     }
     onCreated(); onClose()
   }

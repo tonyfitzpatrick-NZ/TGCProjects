@@ -1,0 +1,653 @@
+/* ============================================================
+   ScheduleTab.css
+   Styles for the Schedule of Finishes tab.
+   Follows the same naming conventions as the rest of the portal.
+   ============================================================ */
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.schedule-tab {
+  padding: 0;
+}
+
+.schedule-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 20px;
+  flex-wrap: wrap;
+}
+
+.schedule-search {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.schedule-search input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  color: #1a202c;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.schedule-search input:focus {
+  border-color: #4f46e5;
+}
+
+.schedule-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.schedule-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.schedule-filter-btn {
+  padding: 7px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.schedule-filter-btn:hover {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.schedule-filter-btn.active {
+  background: #eef2ff;
+  border-color: #4f46e5;
+  color: #4f46e5;
+  font-weight: 500;
+}
+
+/* ── Stats bar ──────────────────────────────────────────────── */
+.schedule-stats {
+  display: flex;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.schedule-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.schedule-stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a202c;
+  line-height: 1;
+}
+
+.schedule-stat-label {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.schedule-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: #e2e8f0;
+}
+
+.schedule-progress-bar {
+  flex: 1;
+  min-width: 120px;
+}
+
+.schedule-progress-track {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.schedule-progress-fill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── Section groups ─────────────────────────────────────────── */
+.schedule-section {
+  margin-bottom: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.schedule-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+  transition: background 0.1s;
+}
+
+.schedule-section-header:hover {
+  background: #f1f5f9;
+}
+
+.schedule-section-header.open {
+  border-bottom-color: #e2e8f0;
+}
+
+.schedule-section-icon {
+  color: #4f46e5;
+  flex-shrink: 0;
+}
+
+.schedule-section-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a202c;
+  flex: 1;
+}
+
+.schedule-section-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-section-count {
+  font-size: 12px;
+  color: #94a3b8;
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.schedule-section-chevron {
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+.schedule-section-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* ── Item rows ──────────────────────────────────────────────── */
+.schedule-item {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.1s;
+}
+
+.schedule-item:last-child {
+  border-bottom: none;
+}
+
+.schedule-item:hover {
+  background: #fafbff;
+}
+
+.schedule-item-header {
+  display: grid;
+  grid-template-columns: 200px 1fr 140px 36px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.schedule-item-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a202c;
+}
+
+.schedule-item-cbi {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.schedule-item-selected {
+  font-size: 13px;
+  color: #475569;
+}
+
+.schedule-item-selected.tbc {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.schedule-item-supplier {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.schedule-item-status-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.schedule-item-expand {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #94a3b8;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.1s;
+}
+
+.schedule-item-expand:hover {
+  color: #4f46e5;
+}
+
+/* ── Status badges ──────────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.status-badge.confirmed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.specified {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.status-badge.substituted {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.tbc {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.status-badge.na {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+/* ── Item detail panel ──────────────────────────────────────── */
+.schedule-item-detail {
+  padding: 0 16px 16px 16px;
+  border-top: 1px solid #f1f5f9;
+  background: #fafbff;
+}
+
+.schedule-item-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 14px;
+}
+
+.schedule-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Options list ───────────────────────────────────────────── */
+.schedule-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.schedule-option:hover {
+  border-color: #4f46e5;
+  background: #fafbff;
+}
+
+.schedule-option.selected {
+  border-color: #4f46e5;
+  background: #eef2ff;
+}
+
+.schedule-option-radio {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+}
+
+.schedule-option.selected .schedule-option-radio {
+  border-color: #4f46e5;
+}
+
+.schedule-option-radio-dot {
+  width: 8px;
+  height: 8px;
+  background: #4f46e5;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.schedule-option.selected .schedule-option-radio-dot {
+  opacity: 1;
+}
+
+.schedule-option-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-option-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a202c;
+}
+
+.schedule-option-detail {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.schedule-option-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.schedule-option-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.schedule-option-tag.warranty {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* ── Status selector ────────────────────────────────────────── */
+.schedule-status-select {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #475569;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+}
+
+.schedule-status-select:focus {
+  border-color: #4f46e5;
+}
+
+/* ── Project note ───────────────────────────────────────────── */
+.schedule-note-area {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1a202c;
+  background: #fff;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.schedule-note-area:focus {
+  border-color: #4f46e5;
+}
+
+.schedule-note-save {
+  margin-top: 6px;
+  padding: 6px 14px;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.schedule-note-save:hover {
+  background: #4338ca;
+}
+
+/* ── Docs list ──────────────────────────────────────────────── */
+.schedule-docs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.schedule-doc-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #4f46e5;
+  text-decoration: none;
+  padding: 4px 0;
+}
+
+.schedule-doc-link:hover {
+  text-decoration: underline;
+}
+
+.schedule-doc-type {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #e0e7ff;
+  color: #3730a3;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.schedule-doc-type.branz {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.schedule-doc-type.manual {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.schedule-no-docs {
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* ── Template selector ──────────────────────────────────────── */
+.schedule-template-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #ede9fe;
+  border: 1px solid #c4b5fd;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.schedule-template-bar-label {
+  font-size: 13px;
+  color: #5b21b6;
+  font-weight: 500;
+  flex: 1;
+}
+
+.schedule-template-select {
+  padding: 6px 10px;
+  border: 1px solid #c4b5fd;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1a202c;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+}
+
+.schedule-template-apply {
+  padding: 6px 14px;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.schedule-template-apply:hover {
+  background: #4338ca;
+}
+
+/* ── Empty / loading states ─────────────────────────────────── */
+.schedule-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  color: #94a3b8;
+  font-size: 14px;
+  gap: 10px;
+}
+
+.schedule-error {
+  padding: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.schedule-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* ── Saving indicator ───────────────────────────────────────── */
+.schedule-saving-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1a202c;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+  animation: fadeInUp 0.2s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .schedule-item-header {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+  }
+
+  .schedule-item-selected {
+    grid-column: 1 / -1;
+  }
+
+  .schedule-item-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-stats {
+    gap: 12px;
+  }
+}

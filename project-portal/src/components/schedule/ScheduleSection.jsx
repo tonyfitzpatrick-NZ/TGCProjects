@@ -70,7 +70,7 @@ export default function ScheduleSection({
                     padding: '12px', 
                     borderRadius: '8px', 
                     border: '1px solid #d1d5db',
-                    marginBottom: '16px',
+                    marginBottom: '20px',
                     fontSize: '15px'
                   }}
                 >
@@ -82,30 +82,33 @@ export default function ScheduleSection({
 
                 {currentOption && (
                   <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '1fr 1fr', 
+                    gap: '20px',
                     background: '#f0fdf4', 
                     border: '1px solid #86efac', 
                     borderRadius: '10px', 
-                    padding: '18px', 
-                    marginBottom: '16px' 
+                    padding: '18px' 
                   }}>
-                    <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '10px' }}>
-                      {currentOption.label}
-                    </div>
-                    
-                    {currentOption.detail && (
-                      <div style={{ fontSize: '14px', marginBottom: '12px', lineHeight: '1.5' }}>
-                        {currentOption.detail}
+                    {/* Left Column */}
+                    <div>
+                      <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '10px' }}>
+                        {currentOption.label}
                       </div>
-                    )}
-
-                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-                      {currentOption.supplier && <div>Supplier: {currentOption.supplier}</div>}
-                      {currentOption.warranty && <div>Warranty: {currentOption.warranty}</div>}
+                      {currentOption.detail && (
+                        <div style={{ fontSize: '14px', lineHeight: '1.5', marginBottom: '12px' }}>
+                          {currentOption.detail}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Links */}
-                    {(currentOption.product_link || currentOption.codemark_link || currentOption.branz_link) && (
-                      <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {/* Right Column */}
+                    <div>
+                      {currentOption.supplier && <div style={{ marginBottom: '6px' }}>Supplier: <strong>{currentOption.supplier}</strong></div>}
+                      {currentOption.warranty && <div style={{ marginBottom: '12px' }}>Warranty: <strong>{currentOption.warranty}</strong></div>}
+
+                      {/* Links */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {currentOption.product_link && (
                           <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer" 
                              style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
@@ -125,13 +128,13 @@ export default function ScheduleSection({
                           </a>
                         )}
                       </div>
-                    )}
 
-                    {currentOption.certificate_notes && (
-                      <div style={{ marginTop: '12px', fontSize: '13px', color: '#444' }}>
-                        {currentOption.certificate_notes}
-                      </div>
-                    )}
+                      {currentOption.certificate_notes && (
+                        <div style={{ marginTop: '12px', fontSize: '13px', color: '#444' }}>
+                          {currentOption.certificate_notes}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -140,13 +143,13 @@ export default function ScheduleSection({
                   placeholder="Project-specific note (optional)"
                   value={selection.project_note || ''}
                   onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '16px' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', marginTop: '16px' }}
                 />
 
                 {!isConfirmed && (
                   <button 
                     onClick={() => confirmSelection(item.id)}
-                    style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '500' }}
+                    style={{ marginTop: '16px', padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '500' }}
                   >
                     Confirm Selection
                   </button>
@@ -156,6 +159,7 @@ export default function ScheduleSection({
                   <button 
                     onClick={() => onSelectOption(item.id, null)}
                     style={{ 
+                      marginTop: '16px',
                       padding: '8px 20px', 
                       background: '#f3f4f6', 
                       color: '#4b5563', 

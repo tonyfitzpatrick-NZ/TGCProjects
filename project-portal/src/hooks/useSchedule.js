@@ -49,8 +49,7 @@ export function useSchedule(projectId) {
         }
 
         if (row.option_id) {
-          const exists = item.options.some(o => o.id === row.option_id);
-          if (!exists) {
+          if (!item.options.some(o => o.id === row.option_id)) {
             item.options.push({
               id: row.option_id,
               label: row.selected_option || row.option_label,
@@ -70,7 +69,6 @@ export function useSchedule(projectId) {
         .from('sched_project_selections')
         .select('*')
         .eq('project_id', projectId);
-      
       setSelections(Object.fromEntries((sels || []).map(s => [s.item_id, s])));
 
       const { data: tmpls } = await supabase.from('sched_templates').select('*');
@@ -136,6 +134,7 @@ export function useSchedule(projectId) {
   }, [projectId, selections]);
 
   const applyTemplateToProject = useCallback(async (templateId) => {
+    if (!templateId) return;
     setSaving(true);
     try {
       const { error } = await supabase
@@ -148,11 +147,11 @@ export function useSchedule(projectId) {
 
       if (error) throw error;
 
-      alert('Template applied successfully!');
-      await load(); // refresh data
+      alert('✅ Template applied successfully!');
+      await load();   // Refresh everything
     } catch (e) {
       console.error(e);
-      alert('Failed to apply template: ' + e.message);
+      alert('Failed to apply template: ' + (e.message || e));
     } finally {
       setSaving(false);
     }

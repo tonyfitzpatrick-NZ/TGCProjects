@@ -20,15 +20,17 @@ export default function ScheduleAdminPanel() {
   async function loadMasterData() {
     setLoading(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('v_sched_master')
         .select('*')
         .order('section_order, item_order, sort_order');
 
-      const grouped = data.reduce((acc, row) => {
+      if (error) throw error;
+
+      const grouped = (data || []).reduce((acc, row) => {
         let section = acc.find(s => s.name === row.section);
         if (!section) {
-          section = { name: row.section, sort_order: row.section_order, items: [] };
+          section = { name: row.section, sort_order: row.section_order || 0, items: [] };
           acc.push(section);
         }
 
@@ -57,25 +59,29 @@ export default function ScheduleAdminPanel() {
 
       setSections(grouped.sort((a, b) => a.sort_order - b.sort_order));
     } catch (e) {
-      console.error(e);
-      alert("Failed to load master data");
+      console.error('Admin load error:', e);
+      alert("Failed to load master data. Please check the database.");
+      setSections([]);
     } finally {
       setLoading(false);
     }
   }
 
   const deleteOption = async (optionId) => {
-    if (!window.confirm('Delete this option?')) return;
-    await supabase.from('sched_item_options').delete().eq('id', optionId);
-    loadMasterData();
+    if (!window.confirm('Delete this option permanently?')) return;
+    const { error } = await supabase.from('sched_item_options').delete().eq('id', optionId);
+    if (error) alert('Delete failed');
+    else loadMasterData();
   };
 
-  if (loading) return <div style={{ padding: '60px', textAlign: 'center' }}>Loading master schedule...</div>;
+  if (loading) {
+    return <div style={{ padding: '60px', textAlign: 'center' }}>Loading master schedule...</div>;
+  }
 
   return (
     <div>
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
-        <h2>Master Schedule — All Sections</h2>
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Master Schedule — All Sections & Options</h2>
         <button onClick={loadMasterData} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8 }}>
           <RefreshCw size={16} /> Refresh
         </button>
@@ -100,14 +106,11 @@ export default function ScheduleAdminPanel() {
                   <strong>{item.label}</strong>
                   {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
                 </div>
-                <button style={{ color: '#3b82f6' }} onClick={() => alert('Edit item coming soon')}>
-                  <Edit2 size={16} />
-                </button>
               </div>
 
               {item.options && item.options.length > 0 ? (
                 item.options.map(opt => (
-                  <div key={opt.id} style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div key={opt.id} style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{opt.label}</div>
                       {opt.detail && <div style={{ fontSize: '13px', color: '#666' }}>{opt.detail}</div>}
@@ -115,12 +118,12 @@ export default function ScheduleAdminPanel() {
                       {opt.warranty && <div style={{ fontSize: '12px', color: '#166534' }}>Warranty: {opt.warranty}</div>}
                     </div>
                     <button onClick={() => deleteOption(opt.id)} style={{ color: '#ef4444' }}>
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 ))
               ) : (
-                <p style={{ color: '#888', fontStyle: 'italic' }}>No options yet</p>
+                <p style={{ color: '#888', fontStyle: 'italic' }}>No options defined yet</p>
               )}
 
               <button style={{ marginTop: '12px', color: '#7c3aed', background: 'none', border: '1px dashed #c4b5fd', padding: '8px 16px', borderRadius: '8px' }}>
@@ -130,6 +133,10 @@ export default function ScheduleAdminPanel() {
           ))}
         </div>
       ))}
+
+      <p style={{ marginTop: '40px', textAlign: 'center', color: '#888' }}>
+        Full inline editing (CBI codes, descriptions, links, etc.) coming soon.
+      </p>
     </div>
   );
 }

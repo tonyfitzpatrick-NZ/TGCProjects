@@ -6,7 +6,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, Edit2, Plus, ExternalLink } from 'lucide-react';
+import { RefreshCw, Trash2, Edit2, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ScheduleAdminPanel() {
@@ -18,7 +18,10 @@ export default function ScheduleAdminPanel() {
   const [editOptionForm, setEditOptionForm] = useState({});
 
   const [addingOptionToItem, setAddingOptionToItem] = useState(null);
-  const [newOptionForm, setNewOptionForm] = useState({ label: '', detail: '', warranty: '', supplier: '', model_ref: '', product_link: '', codemark_link: '', branz_link: '', certificate_notes: '' });
+  const [newOptionForm, setNewOptionForm] = useState({ 
+    label: '', detail: '', warranty: '', supplier: '', model_ref: '', 
+    product_link: '', codemark_link: '', branz_link: '', certificate_notes: '' 
+  });
 
   useEffect(() => {
     loadData();
@@ -72,6 +75,11 @@ export default function ScheduleAdminPanel() {
     }
   }
 
+  const startEditOption = (opt) => {
+    setEditingOptionId(opt.id);
+    setEditOptionForm({ ...opt });
+  };
+
   const saveOptionEdit = async () => {
     const { error } = await supabase
       .from('sched_item_options')
@@ -112,7 +120,7 @@ export default function ScheduleAdminPanel() {
     loadData();
   };
 
-  if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
+  if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading master schedule...</div>;
 
   return (
     <div>
@@ -132,7 +140,13 @@ export default function ScheduleAdminPanel() {
           </h3>
 
           {section.items.map(item => (
-            <div key={item.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+            <div key={item.id} style={{ 
+              background: '#fff', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '12px', 
+              padding: '20px', 
+              marginBottom: '24px' 
+            }}>
               <strong>{item.label}</strong> {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
 
               {item.options.map(opt => (
@@ -149,7 +163,7 @@ export default function ScheduleAdminPanel() {
                         <div><label>Warranty</label><input value={editOptionForm.warranty || ''} onChange={e => setEditOptionForm({...editOptionForm, warranty: e.target.value})} style={{width:'100%', padding:'8px'}} /></div>
                       </div>
 
-                      <label>Product Link (Website)</label>
+                      <label>Product Link</label>
                       <input value={editOptionForm.product_link || ''} onChange={e => setEditOptionForm({...editOptionForm, product_link: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px'}} placeholder="https://" />
 
                       <label>CodeMark Link</label>
@@ -173,7 +187,23 @@ export default function ScheduleAdminPanel() {
                         {opt.detail && <div style={{fontSize:'13px'}}>{opt.detail}</div>}
                         {opt.supplier && <div>Supplier: {opt.supplier}</div>}
                         {opt.warranty && <div>Warranty: {opt.warranty}</div>}
-                        {opt.product_link && <div><a href={opt.product_link} target="_blank" style={{color:'#3b82f6'}}>Product Link</a></div>}
                       </div>
                       <div>
-                        <button onClick={() => setEditingOptionId(opt
+                        <button onClick={() => startEditOption(opt)} style={{color:'#3b82f6', marginRight:'12px'}}><Edit2 size={18}/></button>
+                        <button onClick={() => deleteOption(opt.id)} style={{color:'#ef4444'}}><Trash2 size={18}/></button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <button onClick={() => setAddingOptionToItem(item.id)} style={{ color: '#7c3aed', border: '1px dashed #c4b5fd', padding: '8px 16px', borderRadius: '8px', background: 'none', marginTop: '8px' }}>
+                <Plus size={16} style={{marginRight:6}} /> Add New Option
+              </button>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -10,7 +10,6 @@ import { supabase } from '../lib/supabase';
 export function useSchedule(projectId) {
   const [itemsBySection, setItemsBySection] = useState([]);
   const [selections, setSelections] = useState({});
-  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -69,10 +68,8 @@ export function useSchedule(projectId) {
         .from('sched_project_selections')
         .select('*')
         .eq('project_id', projectId);
+      
       setSelections(Object.fromEntries((sels || []).map(s => [s.item_id, s])));
-
-      const { data: tmpls } = await supabase.from('sched_templates').select('*');
-      setTemplates(tmpls || []);
 
     } catch (e) {
       console.error(e);
@@ -133,57 +130,14 @@ export function useSchedule(projectId) {
     }
   }, [projectId, selections]);
 
-  const applyTemplateToProject = useCallback(async (templateId) => {
-    if (!templateId) {
-      alert("Please select a template first");
-      return;
-    }
-    setSaving(true);
-    try {
-      console.log("Applying template:", templateId, "to project:", projectId);
-
-      const { error } = await supabase
-        .from('projects')
-        .update({ 
-          sched_template_id: templateId,
-          sched_stage: 'design' 
-        })
-        .eq('id', projectId);
-
-      if (error) {
-        console.error("Update error:", error);
-        throw error;
-      }
-
-      alert('✅ Template applied successfully!');
-      await load();   // Refresh the schedule
-    } catch (e) {
-      console.error("Apply template error:", e);
-      alert('Failed to apply template: ' + (e.message || e));
-    } finally {
-      setSaving(false);
-    }
-  }, [projectId, load]);
-
-  const stats = {
-    total: itemsBySection.reduce((sum, s) => sum + (s.items?.length || 0), 0),
-    confirmed: 0,
-    specified: 0,
-    tbc: 0,
-    pct: 0
-  };
-
   return {
     itemsBySection,
     selections,
-    templates,
-    stats,
     loading,
     error,
     saving,
     selectOption,
     updateNote,
-    applyTemplateToProject,
     reload: load,
   };
 }

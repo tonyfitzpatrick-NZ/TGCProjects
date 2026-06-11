@@ -1,32 +1,50 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import ScheduleAdminPanel from '../components/schedule/ScheduleAdminPanel';
 
 export default function AdminSchedulePage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('options');
+
+  const tabs = [
+    { id: 'options', label: 'Options & Products' },
+    { id: 'items', label: 'Items' },
+    { id: 'sections', label: 'Sections' },
+    { id: 'templates', label: 'Templates' },
+  ];
 
   return (
-    <div style={{ padding: '40px', textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
-      <button 
-        onClick={() => navigate(-1)}
-        style={{ padding: '10px 20px', marginBottom: '30px' }}
-      >
-        ← Back to Settings
-      </button>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button onClick={() => navigate(-1)} style={{ padding: 8 }}>
+          <ArrowLeft size={24} />
+        </button>
+        <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 700 }}>Schedule of Finishes — Master Admin</h1>
+      </div>
 
-      <h1 style={{ fontSize: '28px', marginBottom: '20px' }}>Schedule of Finishes — Master Admin</h1>
-      
-      <div style={{ 
-        background: '#fff', 
-        border: '1px solid #e2e8f0', 
-        borderRadius: '12px', 
-        padding: '60px 40px'
-      }}>
-        <h2>Admin Panel</h2>
-        <p style={{ marginTop: '20px', fontSize: '17px', color: '#555' }}>
-          Full CRUD management for sections, items, options, templates, and product data is being built.
-        </p>
-        <p style={{ marginTop: '30px', color: '#666' }}>
-          You can manage selections from the Project → Schedule tab for now.
-        </p>
+      <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', paddingLeft: '24px' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              padding: '16px 28px',
+              borderBottom: activeTab === tab.id ? '3px solid #1B2B4B' : '3px solid transparent',
+              fontWeight: activeTab === tab.id ? '600' : '500',
+              color: activeTab === tab.id ? '#1B2B4B' : '#666',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        <ScheduleAdminPanel activeTab={activeTab} />
       </div>
     </div>
   );

@@ -75,8 +75,6 @@ export default function ScheduleAdminPanel() {
   const saveEdit = async () => {
     if (!editingOptionId) return;
 
-    console.log("Saving:", editingOptionId, editOptionForm);
-
     const { error } = await supabase
       .from('sched_item_options')
       .update({
@@ -84,40 +82,40 @@ export default function ScheduleAdminPanel() {
         detail: editOptionForm.detail,
         warranty: editOptionForm.warranty,
         supplier: editOptionForm.supplier,
-        product_link: editOptionForm.product_link || null,
-        codemark_link: editOptionForm.codemark_link || null,
-        branz_link: editOptionForm.branz_link || null,
-        certificate_notes: editOptionForm.certificate_notes || null
+        product_link: editOptionForm.product_link,
+        codemark_link: editOptionForm.codemark_link,
+        branz_link: editOptionForm.branz_link,
+        certificate_notes: editOptionForm.certificate_notes
       })
       .eq('id', editingOptionId);
 
     if (error) {
-      console.error(error);
       alert('Save failed: ' + error.message);
     } else {
-      alert('✅ Saved successfully! Refreshing...');
+      alert('✅ Saved successfully!');
       setEditingOptionId(null);
-      setEditOptionForm({});
-      await loadData(); // Force reload
+      loadData();
     }
   };
 
   const deleteOption = async (id) => {
-    if (!window.confirm('Delete?')) return;
+    if (!window.confirm('Delete this option?')) return;
     await supabase.from('sched_item_options').delete().eq('id', id);
     loadData();
   };
 
-  if (loading) return <div style={{ padding: '100px', textAlign: 'center' }}>Loading...</div>;
+  if (loading) return <div style={{ padding: '100px', textAlign: 'center' }}>Loading master schedule...</div>;
 
   return (
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between' }}>
-        <h2>Master Schedule</h2>
-        <button onClick={loadData}><RefreshCw size={16} /> Refresh</button>
+        <h2>Master Schedule — Full Edit</h2>
+        <button onClick={loadData} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8 }}>
+          <RefreshCw size={16} /> Refresh
+        </button>
       </div>
 
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+      {error && <div style={{ color: 'red', padding: '10px' }}>{error}</div>}
 
       {sections.map(section => (
         <div key={section.name} style={{ marginBottom: '40px' }}>

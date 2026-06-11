@@ -3,82 +3,77 @@
 // Collapsible section group (Exterior, Kitchen, etc.)
 // ============================================================
 
-import React, { useState } from 'react'
-import { ChevronDown, Home, Layout, Utensils, Bath, Car, Archive, Trees, Building } from 'lucide-react'
-import ScheduleItem from './ScheduleItem'
+import React from 'react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 
-const SECTION_ICONS = {
-  'Exterior':             Home,
-  'Interior':             Layout,
-  'Kitchen':              Utensils,
-  'Bathroom & Ensuite':   Bath,
-  'Garage & Laundry':     Car,
-  'Storage':              Archive,
-  'Exterior Landscaping': Trees,
-  'Structure':            Building,
-}
-
-export default function ScheduleSection({
-  section,
-  items,
-  selections,
-  onSelectOption,
-  onUpdateStatus,
-  onUpdateNote,
+export default function ScheduleSection({ 
+  section, 
+  items = [], 
+  selections = {}, 
+  onSelectOption, 
+  onUpdateStatus, 
+  onUpdateNote, 
   isAdmin,
-  defaultOpen,
+  defaultOpen = false 
 }) {
-  const [open, setOpen] = useState(defaultOpen ?? true)
-
-  const Icon = SECTION_ICONS[section.name] || Building
-
-  // Count confirmed items in this section
-  const confirmedCount = items.filter(i =>
-    selections[i.id]?.status === 'confirmed'
-  ).length
+  const [open, setOpen] = React.useState(defaultOpen);
 
   return (
-    <div className="schedule-section">
-      <div
-        className={`schedule-section-header ${open ? 'open' : ''}`}
-        onClick={() => setOpen(o => !o)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={e => e.key === 'Enter' && setOpen(o => !o)}
-        aria-expanded={open}
+    <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%',
+          padding: '16px 20px',
+          textAlign: 'left',
+          background: '#f8fafc',
+          border: 'none',
+          fontSize: '16px',
+          fontWeight: '600',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
       >
-        <Icon size={16} className="schedule-section-icon" />
-        <span className="schedule-section-name">{section.name}</span>
-        <div className="schedule-section-meta">
-          <span className="schedule-section-count">
-            {confirmedCount}/{items.length} confirmed
-          </span>
-          <ChevronDown
-            size={15}
-            className={`schedule-section-chevron ${open ? 'open' : ''}`}
-          />
-        </div>
-      </div>
+        {section.name}
+        <span style={{ fontSize: '13px', color: '#64748b' }}>
+          {items.length} items
+        </span>
+      </button>
 
       {open && (
-        <div>
-          {items.length === 0 ? (
-            <div className="schedule-empty">No items in this section</div>
-          ) : (
-            items.map(item => (
-              <ScheduleItem
-                key={item.id}
-                item={item}
-                selection={selections[item.id]}
-                onSelectOption={onSelectOption}
-                onUpdateStatus={onUpdateStatus}
-                onUpdateNote={onUpdateNote}
-                isAdmin={isAdmin}
-              />
-            ))
-          )}
+        <div style={{ padding: '12px 20px' }}>
+          {items.map(item => {
+            const selection = selections[item.id] || {};
+            const selectedOption = item.options?.find(o => o.id === selection.option_id) || 
+                                  item.options?.find(o => o.is_default);
+
+            return (
+              <div key={item.id} style={{ 
+                padding: '12px', 
+                border: '1px solid #f1f5f9', 
+                borderRadius: '8px', 
+                marginBottom: '12px',
+                background: '#fff'
+              }}>
+                <div style={{ fontWeight: '500', marginBottom: '6px' }}>{item.label}</div>
+                {item.cbi_code && (
+                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
+                    CBI: {item.cbi_code}
+                  </div>
+                )}
+
+                {selectedOption && (
+                  <div style={{ fontSize: '13px', color: '#166534' }}>
+                    ✓ {selectedOption.label}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
-  )
+  );
 }

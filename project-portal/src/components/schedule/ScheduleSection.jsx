@@ -17,39 +17,26 @@ export default function ScheduleSection({
 }) {
   const [open, setOpen] = useState(true);
 
-  // Special Cladding Grouping
-  const isCladdingItem = (itemName) => 
-    itemName.toLowerCase().includes('cladding') || 
-    itemName.toLowerCase().includes('weatherboard') ||
-    itemName.toLowerCase().includes('metal sheet') ||
-    itemName.toLowerCase().includes('metal tray');
+  // Detect cladding items
+  const isCladdingItem = (item) => 
+    item.label.toLowerCase().includes('cladding') || 
+    item.label.toLowerCase().includes('weatherboard') ||
+    item.label.toLowerCase().includes('metal sheet') ||
+    item.label.toLowerCase().includes('metal tray') ||
+    item.label.toLowerCase().includes('plaster') ||
+    item.label.toLowerCase().includes('plywood');
 
-  const claddingItems = items.filter(item => isCladdingItem(item.label));
-  const normalItems = items.filter(item => !isCladdingItem(item.label));
+  const claddingItems = items.filter(item => isCladdingItem(item));
+  const normalItems = items.filter(item => !isCladdingItem(item));
 
-  // If this section has cladding items, show grouped version
+  // Cladding grouping
   if (claddingItems.length > 0) {
-    const allCladdingOptions = claddingItems.flatMap(item => item.options || []);
-    const uniqueOptions = Array.from(new Map(allCladdingOptions.map(o => [o.id, o])).values());
+    const allOptions = claddingItems.flatMap(item => item.options || []);
+    const uniqueOptions = Array.from(new Map(allOptions.map(o => [o.id, o])).values());
 
     return (
       <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-        <button
-          onClick={() => setOpen(!open)}
-          style={{
-            width: '100%',
-            padding: '16px 20px',
-            textAlign: 'left',
-            background: '#f8fafc',
-            border: 'none',
-            fontSize: '17px',
-            fontWeight: '600',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            cursor: 'pointer'
-          }}
-        >
+        <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
           Cladding (up to 3 choices)
         </button>
 
@@ -88,29 +75,12 @@ export default function ScheduleSection({
     );
   }
 
-  // Normal section rendering
+  // Normal items
   return (
     <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          padding: '16px 20px',
-          textAlign: 'left',
-          background: '#f8fafc',
-          border: 'none',
-          fontSize: '17px',
-          fontWeight: '600',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer'
-        }}
-      >
+      <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
         {section.name}
-        <span style={{ fontSize: '14px', color: '#64748b' }}>
-          {items.length} items
-        </span>
+        <span style={{ fontSize: '14px', color: '#64748b' }}>{items.length} items</span>
       </button>
 
       {open && (
@@ -123,13 +93,7 @@ export default function ScheduleSection({
             const isConfirmed = selection.status === 'confirmed';
 
             return (
-              <div key={item.id} style={{ 
-                padding: '16px', 
-                border: '1px solid #f1f5f9', 
-                borderRadius: '10px', 
-                marginBottom: '16px',
-                background: '#fff'
-              }}>
+              <div key={item.id} style={{ padding: '16px', border: '1px solid #f1f5f9', borderRadius: '10px', marginBottom: '16px', background: '#fff' }}>
                 <div style={{ marginBottom: '12px' }}>
                   <strong>{item.label}</strong>
                   {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
@@ -162,19 +126,13 @@ export default function ScheduleSection({
                 />
 
                 {!isConfirmed && (
-                  <button 
-                    onClick={() => confirmSelection(item.id)}
-                    style={{ marginTop: '12px', padding: '8px 20px', background: '#166534', color: '#fff', border: 'none', borderRadius: '6px' }}
-                  >
+                  <button onClick={() => confirmSelection(item.id)} style={{ marginTop: '12px', padding: '8px 20px', background: '#166534', color: '#fff', border: 'none', borderRadius: '6px' }}>
                     Confirm Selection
                   </button>
                 )}
 
                 {isConfirmed && isAdmin && (
-                  <button 
-                    onClick={() => onSelectOption(item.id, null)}
-                    style={{ marginTop: '12px', padding: '8px 20px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}
-                  >
+                  <button onClick={() => onSelectOption(item.id, null)} style={{ marginTop: '12px', padding: '8px 20px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}>
                     <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock & Edit
                   </button>
                 )}

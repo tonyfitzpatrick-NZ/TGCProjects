@@ -6,7 +6,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, Edit2, Save, X } from 'lucide-react';
+import { RefreshCw, Trash2, Edit2, Save, X, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ScheduleAdminPanel() {
@@ -15,6 +15,8 @@ export default function ScheduleAdminPanel() {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [addingToItem, setAddingToItem] = useState(null); // item label for which we're adding
+  const [newOptionForm, setNewOptionForm] = useState({ label: '', detail: '', warranty: '', supplier: '', model_ref: '' });
 
   useEffect(() => {
     loadData();
@@ -40,7 +42,12 @@ export default function ScheduleAdminPanel() {
 
         let item = section.items.find(i => i.label === row.item);
         if (!item) {
-          item = { label: row.item, cbi_code: row.cbi_code, options: [] };
+          item = { 
+            id: row.item_id,           // important for adding new options
+            label: row.item, 
+            cbi_code: row.cbi_code, 
+            options: [] 
+          };
           section.items.push(item);
         }
 
@@ -84,16 +91,40 @@ export default function ScheduleAdminPanel() {
       })
       .eq('id', editingId);
 
-    if (error) {
-      alert('Save failed: ' + error.message);
-    } else {
+    if (error) alert('Save failed');
+    else {
       setEditingId(null);
       loadData();
     }
   };
 
+  const saveNewOption = async (itemId) => {
+    if (!newOptionForm.label.trim()) {
+      alert("Option label is required");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('sched_item_options')
+      .insert({
+        item_id: itemId,
+        label: newOptionForm.label,
+        detail: newOptionForm.detail,
+        warranty: newOptionForm.warranty,
+        supplier: newOptionForm.supplier,
+        model_ref: newOptionForm.model_ref
+      });
+
+    if (error) alert('Failed to add option');
+    else {
+      setAddingToItem(null);
+      setNewOptionForm({ label: '', detail: '', warranty: '', supplier: '', model_ref: '' });
+      loadData();
+    }
+  };
+
   const deleteOption = async (id) => {
-    if (!window.confirm('Delete this option?')) return;
+    if (!window.confirm('Delete this option permanently?')) return;
     await supabase.from('sched_item_options').delete().eq('id', id);
     loadData();
   };
@@ -119,23 +150,40 @@ export default function ScheduleAdminPanel() {
 
           {section.items.map(item => (
             <div key={item.label} style={{ 
-              background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px' 
+              background: '#fff', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '12px', 
+              padding: '20px', 
+              marginBottom: '24px' 
             }}>
-              <strong>{item.label}</strong>
-              {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
+              <div style={{ marginBottom: '16px' }}>
+                <strong>{item.label}</strong>
+                {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
+              </div>
 
               {item.options.map(opt => (
-                <div key={opt.id} style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', marginTop: '12px' }}>
+                <div key={opt.id} style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', marginBottom: '12px' }}>
                   {editingId === opt.id ? (
                     <div>
-                      <input value={editForm.label || ''} onChange={e => setEditForm({...editForm, label: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px'}} placeholder="Label" />
-                      <textarea value={editForm.detail || ''} onChange={e => setEditForm({...editForm, detail: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px', minHeight:'70px'}} placeholder="Detail / Specification" />
-                      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px'}}>
-                        <input value={editForm.supplier || ''} onChange={e => setEditForm({...editForm, supplier: e.target.value})} placeholder="Supplier" />
-                        <input value={editForm.warranty || ''} onChange={e => setEditForm({...editForm, warranty: e.target.value})} placeholder="Warranty" />
+                      <label>Option Label</label>
+                      <input value={editForm.label || ''} onChange={e => setEditForm({...editForm, label: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px'}} />
+                      
+                      <label>Detail / Specification</label>
+                      <textarea value={editForm.detail || ''} onChange={e => setEditForm({...editForm, detail: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px', minHeight:'70px'}} />
+                      
+                      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>
+                        <div>
+                          <label>Supplier</label>
+                          <input value={editForm.supplier || ''} onChange={e => setEditForm({...editForm, supplier: e.target.value})} style={{width:'100%', padding:'8px'}} />
+                        </div>
+                        <div>
+                          <label>Warranty</label>
+                          <input value={editForm.warranty || ''} onChange={e => setEditForm({...editForm, warranty: e.target.value})} style={{width:'100%', padding:'8px'}} />
+                        </div>
                       </div>
+
                       <div style={{marginTop:'12px'}}>
-                        <button onClick={saveEdit} style={{background:'#166534', color:'white', padding:'6px 16px', borderRadius:'6px', marginRight:'8px'}}>Save</button>
+                        <button onClick={saveEdit} style={{background:'#166534', color:'white', padding:'6px 16px', borderRadius:'6px', marginRight:'8px'}}>Save Changes</button>
                         <button onClick={() => setEditingId(null)} style={{padding:'6px 16px'}}>Cancel</button>
                       </div>
                     </div>
@@ -155,6 +203,41 @@ export default function ScheduleAdminPanel() {
                   )}
                 </div>
               ))}
+
+              {/* Add New Option Button + Form */}
+              <button 
+                onClick={() => setAddingToItem(item.label)}
+                style={{ marginTop: '12px', color: '#7c3aed', border: '1px dashed #c4b5fd', padding: '8px 16px', borderRadius: '8px', background: 'none' }}
+              >
+                <Plus size={16} style={{marginRight: 6}} /> Add New Option
+              </button>
+
+              {addingToItem === item.label && (
+                <div style={{ marginTop: '16px', padding: '16px', background: '#f0f9ff', borderRadius: '8px' }}>
+                  <h4>Add New Option for {item.label}</h4>
+                  <label>Option Label</label>
+                  <input value={newOptionForm.label} onChange={e => setNewOptionForm({...newOptionForm, label: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px'}} />
+                  
+                  <label>Detail / Specification</label>
+                  <textarea value={newOptionForm.detail} onChange={e => setNewOptionForm({...newOptionForm, detail: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px', minHeight:'60px'}} />
+                  
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>
+                    <div>
+                      <label>Supplier</label>
+                      <input value={newOptionForm.supplier} onChange={e => setNewOptionForm({...newOptionForm, supplier: e.target.value})} style={{width:'100%', padding:'8px'}} />
+                    </div>
+                    <div>
+                      <label>Warranty</label>
+                      <input value={newOptionForm.warranty} onChange={e => setNewOptionForm({...newOptionForm, warranty: e.target.value})} style={{width:'100%', padding:'8px'}} />
+                    </div>
+                  </div>
+
+                  <div style={{marginTop:'12px'}}>
+                    <button onClick={() => saveNewOption(item.id)} style={{background:'#166534', color:'white', padding:'8px 20px', borderRadius:'6px', marginRight:'8px'}}>Add Option</button>
+                    <button onClick={() => {setAddingToItem(null); setNewOptionForm({label:'',detail:'',warranty:'',supplier:'',model_ref:''});}} style={{padding:'8px 20px'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

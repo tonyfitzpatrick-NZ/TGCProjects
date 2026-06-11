@@ -179,4 +179,4 @@ export function useSchedule(projectId) {
     applyTemplateToProject,
     reload: load,
   };
-}}
+}

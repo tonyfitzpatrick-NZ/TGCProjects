@@ -14,6 +14,9 @@ import ConsultantReportPage from './pages/ConsultantReportPage'
 import DocumentsPage from './pages/DocumentsPage'
 import AdminApplicationTemplatesPage from './pages/AdminApplicationTemplatesPage'
 
+// Import the new admin page (we'll create it again safely)
+import AdminSchedulePage from './pages/AdminSchedulePage'
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return (
@@ -47,8 +50,11 @@ function App() {
                   <Route path="/admin/settings" element={<SettingsPage />} />
                   <Route path="/admin/applications" element={<AdminApplicationTemplatesPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  
+                  {/* Schedule Admin Route */}
                   <Route path="/admin/schedule" element={<AdminSchedulePage />} />
+                  
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

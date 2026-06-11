@@ -12,13 +12,12 @@ import React, { useState, useMemo } from 'react'
 import { Search, Shield, AlertCircle, Loader, CheckCircle } from 'lucide-react'
 import { useSchedule } from '../../hooks/useSchedule'
 import ScheduleSection from './ScheduleSection'
-import './ScheduleTab.css'
 
 const STATUS_FILTERS = [
-  { value: 'all',         label: 'All items' },
-  { value: 'tbc',         label: 'TBC only' },
-  { value: 'confirmed',   label: 'Confirmed' },
-  { value: 'warranted',   label: 'Has warranty' },
+  { value: 'all', label: 'All items' },
+  { value: 'tbc', label: 'TBC only' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'warranted', label: 'Has warranty' },
 ]
 
 export default function ScheduleTab({ projectId, userRole }) {
@@ -31,74 +30,61 @@ export default function ScheduleTab({ projectId, userRole }) {
     error,
     selectOption,
     updateNote,
+    applyTemplateToProject,
     reload,
   } = useSchedule(projectId)
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedTemplate, setSelectedTemplate] = useState('')
-  const [applyingTemplate, setApplyingTemplate] = useState(false)
+  const [applying, setApplying] = useState(false)
 
   const isAdmin = userRole === 'admin' || userRole === 'lead'
 
   const handleApplyTemplate = async () => {
     if (!selectedTemplate) return
-    setApplyingTemplate(true)
+    setApplying(true)
     try {
-      // This calls the function from the hook
-      await useSchedule(projectId).applyTemplateToProject?.(selectedTemplate) // fallback if not in hook yet
-      alert('Template applied successfully!')
-      reload() // refresh data
+      await applyTemplateToProject(selectedTemplate)
+      setSelectedTemplate('') // reset
     } catch (e) {
-      alert('Failed to apply template')
+      console.error(e)
     } finally {
-      setApplyingTemplate(false)
+      setApplying(false)
     }
   }
 
   const filteredSections = useMemo(() => {
-    if (!itemsBySection || !Array.isArray(itemsBySection)) return [];
-
+    if (!itemsBySection || !Array.isArray(itemsBySection)) return []
     return itemsBySection
       .map(section => {
-        let items = section.items || [];
-
+        let items = section.items || []
         if (search.trim()) {
-          const q = search.toLowerCase();
+          const q = search.toLowerCase()
           items = items.filter(item => 
             item.label.toLowerCase().includes(q) ||
             (item.cbi_code || '').includes(q) ||
-            (item.options || []).some(o => 
-              o.label.toLowerCase().includes(q) || 
-              (o.detail || '').toLowerCase().includes(q)
-            )
-          );
+            (item.options || []).some(o => o.label.toLowerCase().includes(q))
+          )
         }
-
-        if (statusFilter === 'confirmed') {
-          items = items.filter(i => selections[i.id]?.status === 'confirmed');
-        } else if (statusFilter === 'tbc') {
-          items = items.filter(i => !selections[i.id] || selections[i.id].status === 'tbc');
-        }
-
-        return { ...section, items };
+        return { ...section, items }
       })
-      .filter(s => s.items.length > 0);
-  }, [itemsBySection, selections, search, statusFilter]);
+      .filter(s => s.items.length > 0)
+  }, [itemsBySection, search])
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading schedule...</div>;
-  if (error) return <div style={{ padding: '40px', color: 'red' }}>{error}</div>;
+  if (loading) return <div style={{ padding: '60px', textAlign: 'center' }}>Loading schedule...</div>
+  if (error) return <div style={{ padding: '40px', color: 'red' }}>Error: {error}</div>
 
   return (
-    <div className="schedule-tab">
+    <div style={{ padding: '20px' }}>
       {/* Template Bar */}
       {isAdmin && templates.length > 0 && (
-        <div style={{ padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span>Start from template:</span>
+        <div style={{ padding: '16px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <span style={{ fontWeight: '500' }}>Apply template:</span>
           <select
             value={selectedTemplate}
             onChange={e => setSelectedTemplate(e.target.value)}
-            style={{ padding: '8px', borderRadius: '6px' }}
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
           >
             <option value="">Choose template...</option>
             {templates.map(t => (
@@ -107,16 +93,28 @@ export default function ScheduleTab({ projectId, userRole }) {
           </select>
           <button 
             onClick={handleApplyTemplate}
-            disabled={!selectedTemplate || applyingTemplate}
-            style={{ padding: '8px 16px', background: '#1B2B4B', color: '#fff', border: 'none', borderRadius: '6px' }}
+            disabled={!selectedTemplate || applying}
+            style={{ 
+              padding: '8px 20px', 
+              background: '#1B2B4B', 
+              color: '#fff', 
+              border: 'none', 
+              borderRadius: '8px',
+              fontWeight: '500'
+            }}
           >
-            {applyingTemplate ? 'Applying...' : 'Apply Template'}
+            {applying ? 'Applying...' : 'Apply Template'}
           </button>
         </div>
       )}
 
-      {/* Stats + Toolbar */}
-      {/* ... (keep your existing stats and toolbar) */}
+      {/* Stats Bar */}
+      <div style={{ display: 'flex', gap: '30px', marginBottom: '20px', fontSize: '15px' }}>
+        <div><strong>{stats.total}</strong> Total Items</div>
+        <div><strong style={{ color: '#166534' }}>{stats.confirmed}</strong> Confirmed</div>
+        <div><strong>{stats.specified}</strong> Specified</div>
+        <div><strong style={{ color: '#64748b' }}>{stats.tbc}</strong> TBC</div>
+      </div>
 
       {/* Sections */}
       {filteredSections.map((section, idx) => (

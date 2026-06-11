@@ -6,7 +6,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, RefreshCw } from 'lucide-react';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ScheduleAdminPanel() {
@@ -14,53 +14,35 @@ export default function ScheduleAdminPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadMasterData();
+    loadData();
   }, []);
 
-  async function loadMasterData() {
+  async function loadData() {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('v_sched_master')
+      // Simple direct query - more reliable
+      const { data: sectionsData } = await supabase
+        .from('sched_sections')
         .select('*')
-        .order('section_order, item_order, sort_order');
+        .order('sort_order');
 
-      if (error) throw error;
+      const { data: itemsData } = await supabase
+        .from('sched_items')
+        .select('*, sched_item_options(*)')
+        .order('sort_order');
 
-      const grouped = (data || []).reduce((acc, row) => {
-        let section = acc.find(s => s.name === row.section);
-        if (!section) {
-          section = { name: row.section, sort_order: row.section_order || 0, items: [] };
-          acc.push(section);
-        }
+      const grouped = sectionsData.map(section => {
+        const sectionItems = itemsData.filter(item => item.section_id === section.id);
+        return {
+          ...section,
+          items: sectionItems
+        };
+      });
 
-        let item = section.items.find(i => i.label === row.item);
-        if (!item) {
-          item = {
-            label: row.item,
-            cbi_code: row.cbi_code,
-            options: []
-          };
-          section.items.push(item);
-        }
-
-        if (row.option_id) {
-          item.options.push({
-            id: row.option_id,
-            label: row.option_label,
-            detail: row.detail,
-            warranty: row.warranty,
-            supplier: row.supplier,
-            model_ref: row.model_ref
-          });
-        }
-        return acc;
-      }, []);
-
-      setSections(grouped.sort((a, b) => a.sort_order - b.sort_order));
+      setSections(grouped);
     } catch (e) {
-      console.error('Admin load error:', e);
-      alert("Failed to load master data. Please check the database.");
+      console.error(e);
+      alert("Failed to load master data. Please check the database tables exist.");
       setSections([]);
     } finally {
       setLoading(false);
@@ -68,33 +50,30 @@ export default function ScheduleAdminPanel() {
   }
 
   const deleteOption = async (optionId) => {
-    if (!window.confirm('Delete this option permanently?')) return;
-    const { error } = await supabase.from('sched_item_options').delete().eq('id', optionId);
-    if (error) alert('Delete failed');
-    else loadMasterData();
+    if (!window.confirm('Delete this option?')) return;
+    await supabase.from('sched_item_options').delete().eq('id', optionId);
+    loadData();
   };
 
-  if (loading) {
-    return <div style={{ padding: '60px', textAlign: 'center' }}>Loading master schedule...</div>;
-  }
+  if (loading) return <div style={{ padding: '60px', textAlign: 'center' }}>Loading master schedule...</div>;
 
   return (
     <div>
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Master Schedule — All Sections & Options</h2>
-        <button onClick={loadMasterData} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8 }}>
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+        <h2>Master Schedule — All Sections</h2>
+        <button onClick={loadData} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8 }}>
           <RefreshCw size={16} /> Refresh
         </button>
       </div>
 
       {sections.map(section => (
-        <div key={section.name} style={{ marginBottom: '40px' }}>
-          <h3 style={{ fontSize: '22px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>
+        <div key={section.id} style={{ marginBottom: '40px' }}>
+          <h3 style={{ fontSize: '22px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' }}>
             {section.name}
           </h3>
 
           {section.items.map(item => (
-            <div key={item.label} style={{ 
+            <div key={item.id} style={{ 
               background: '#fff', 
               border: '1px solid #e2e8f0', 
               borderRadius: '12px', 
@@ -108,14 +87,14 @@ export default function ScheduleAdminPanel() {
                 </div>
               </div>
 
-              {item.options && item.options.length > 0 ? (
-                item.options.map(opt => (
-                  <div key={opt.id} style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {item.sched_item_options && item.sched_item_options.length > 0 ? (
+                item.sched_item_options.map(opt => (
+                  <div key={opt.id} style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{opt.label}</div>
-                      {opt.detail && <div style={{ fontSize: '13px', color: '#666' }}>{opt.detail}</div>}
-                      {opt.supplier && <div style={{ fontSize: '12px' }}>Supplier: {opt.supplier}</div>}
-                      {opt.warranty && <div style={{ fontSize: '12px', color: '#166534' }}>Warranty: {opt.warranty}</div>}
+                      {opt.detail && <div style={{ fontSize: '13px' }}>{opt.detail}</div>}
+                      {opt.supplier && <div>Supplier: {opt.supplier}</div>}
+                      {opt.warranty && <div>Warranty: {opt.warranty}</div>}
                     </div>
                     <button onClick={() => deleteOption(opt.id)} style={{ color: '#ef4444' }}>
                       <Trash2 size={18} />
@@ -123,20 +102,12 @@ export default function ScheduleAdminPanel() {
                   </div>
                 ))
               ) : (
-                <p style={{ color: '#888', fontStyle: 'italic' }}>No options defined yet</p>
+                <p style={{ color: '#888' }}>No options defined yet</p>
               )}
-
-              <button style={{ marginTop: '12px', color: '#7c3aed', background: 'none', border: '1px dashed #c4b5fd', padding: '8px 16px', borderRadius: '8px' }}>
-                + Add new option
-              </button>
             </div>
           ))}
         </div>
       ))}
-
-      <p style={{ marginTop: '40px', textAlign: 'center', color: '#888' }}>
-        Full inline editing (CBI codes, descriptions, links, etc.) coming soon.
-      </p>
     </div>
   );
 }

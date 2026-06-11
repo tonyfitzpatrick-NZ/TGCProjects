@@ -4,7 +4,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { CheckCircle, Lock } from 'lucide-react';
+import { CheckCircle, Lock, Edit3 } from 'lucide-react';
 
 export default function ScheduleSection({ 
   section, 
@@ -64,13 +64,18 @@ export default function ScheduleSection({
                     <strong>{item.label}</strong>
                     {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                   </div>
-                  {isConfirmed && <div style={{ color: '#166534' }}><CheckCircle size={18} /> Confirmed</div>}
+                  {isConfirmed && (
+                    <div style={{ color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle size={18} /> Confirmed
+                    </div>
+                  )}
                 </div>
 
+                {/* Dropdown - Disabled when confirmed */}
                 <select
                   value={selectedOptionId || ''}
-                  onChange={(e) => !isConfirmed && onSelectOption(item.id, e.target.value || null)}
-                  disabled={isConfirmed && !isAdmin}
+                  onChange={(e) => onSelectOption(item.id, e.target.value || null)}
+                  disabled={isConfirmed}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -89,38 +94,61 @@ export default function ScheduleSection({
                   ))}
                 </select>
 
+                {/* Selected Option Info */}
                 {currentOption && (
                   <div style={{ fontSize: '13px', color: '#166534', background: '#f0fdf4', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
                     Selected: {currentOption.label}
                   </div>
                 )}
 
+                {/* Note */}
                 <input
                   type="text"
                   placeholder="Project-specific note (optional)"
                   value={selection.project_note || ''}
                   onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px' }}
                 />
 
-                {/* Confirm Button */}
-                {!isConfirmed && (
-                  <button 
-                    onClick={() => confirmSelection(item.id)}
-                    style={{ marginTop: '12px', padding: '6px 16px', background: '#166534', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px' }}
-                  >
-                    Confirm Selection
-                  </button>
-                )}
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {!isConfirmed && (
+                    <button 
+                      onClick={() => confirmSelection(item.id)}
+                      style={{ 
+                        padding: '8px 20px', 
+                        background: '#166534', 
+                        color: '#fff', 
+                        border: 'none', 
+                        borderRadius: '6px', 
+                        fontSize: '13px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Confirm Selection
+                    </button>
+                  )}
 
-                {isConfirmed && isAdmin && (
-                  <button 
-                    onClick={() => onSelectOption(item.id, null)}
-                    style={{ marginTop: '12px', padding: '6px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px' }}
-                  >
-                    <Lock size={14} style={{ marginRight: 6 }} /> Unlock for Edit
-                  </button>
-                )}
+                  {isConfirmed && isAdmin && (
+                    <button 
+                      onClick={() => onSelectOption(item.id, null)}
+                      style={{ 
+                        padding: '8px 20px', 
+                        background: '#ef4444', 
+                        color: '#fff', 
+                        border: 'none', 
+                        borderRadius: '6px', 
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Edit3 size={16} /> Unlock & Edit
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

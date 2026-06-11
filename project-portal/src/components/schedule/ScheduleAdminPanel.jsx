@@ -5,144 +5,135 @@
 // Only rendered when userRole === 'admin'
 // ============================================================
 
-import React, { useState } from 'react';
-import { Edit3, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, Trash2, Edit2, Plus } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
-export default function ScheduleSection({ 
-  section, 
-  items = [], 
-  selections = {}, 
-  onSelectOption, 
-  onUpdateNote,
-  confirmSelection,
-  isAdmin 
-}) {
-  const [open, setOpen] = useState(true);
+export default function ScheduleAdminPanel() {
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    setLoading(true);
+    setError('');
+    try {
+      const { data, error: qError } = await supabase
+        .from('v_sched_master')
+        .select('*')
+        .order('section_order, item_order');
+
+      if (qError) throw qError;
+
+      const grouped = (data || []).reduce((acc, row) => {
+        const sectionName = row.section || 'Unknown Section';
+        let section = acc.find(s => s.name === sectionName);
+        if (!section) {
+          section = { name: sectionName, items: [] };
+          acc.push(section);
+        }
+
+        const itemLabel = row.item || 'Unknown Item';
+        let item = section.items.find(i => i.label === itemLabel);
+        if (!item) {
+          item = { 
+            id: row.item_id,
+            label: itemLabel, 
+            cbi_code: row.cbi_code || '', 
+            options: [] 
+          };
+          section.items.push(item);
+        }
+
+        if (row.option_id) {
+          item.options.push({
+            id: row.option_id,
+            label: row.option_label || 'Unnamed Option',
+            detail: row.detail,
+            warranty: row.warranty,
+            supplier: row.supplier,
+            model_ref: row.model_ref
+          });
+        }
+        return acc;
+      }, []);
+
+      setSections(grouped);
+    } catch (e) {
+      console.error(e);
+      setError(e.message || 'Unknown error loading data');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const deleteOption = async (id) => {
+    if (!window.confirm('Delete this option?')) return;
+    await supabase.from('sched_item_options').delete().eq('id', id);
+    loadData();
+  };
+
+  if (loading) return <div style={{ padding: '100px', textAlign: 'center', fontSize: '17px' }}>Loading master schedule...</div>;
 
   return (
-    <div style={{ marginBottom: '28px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          padding: '18px 24px',
-          textAlign: 'left',
-          background: '#f8fafc',
-          border: 'none',
-          fontSize: '18px',
-          fontWeight: '600',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer'
-        }}
-      >
-        {section.name}
-        <span style={{ fontSize: '14px', color: '#64748b' }}>{items.length} items</span>
-      </button>
+    <div>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Master Schedule</h2>
+        <button onClick={loadData} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8 }}>
+          <RefreshCw size={16} /> Refresh
+        </button>
+      </div>
 
-      {open && (
-        <div style={{ padding: '20px' }}>
-          {items.map(item => {
-            const selection = selections[item.id] || {};
-            const selectedId = selection.option_id;
-            const options = item.options || [];
-            const currentOption = options.find(o => o.id === selectedId) || options.find(o => o.is_default);
-            const isConfirmed = selection.status === 'confirmed';
-
-            return (
-              <div key={item.id} style={{ 
-                border: '1px solid #e2e8f0', 
-                borderRadius: '12px', 
-                padding: '20px', 
-                marginBottom: '20px',
-                background: '#fff'
-              }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <strong style={{ fontSize: '17px' }}>{item.label}</strong>
-                  {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
-                </div>
-
-                <select
-                  value={selectedId || ''}
-                  onChange={(e) => onSelectOption(item.id, e.target.value || null)}
-                  disabled={isConfirmed && !isAdmin}
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px', 
-                    borderRadius: '8px', 
-                    border: '1px solid #d1d5db',
-                    marginBottom: '16px',
-                    fontSize: '15px'
-                  }}
-                >
-                  <option value="">— Select option —</option>
-                  {options.map(opt => (
-                    <option key={opt.id} value={opt.id}>{opt.label}</option>
-                  ))}
-                </select>
-
-                {currentOption && (
-                  <div style={{ 
-                    background: '#f0fdf4', 
-                    border: '1px solid #86efac', 
-                    borderRadius: '10px', 
-                    padding: '16px', 
-                    marginBottom: '16px' 
-                  }}>
-                    <div style={{ fontWeight: '600', marginBottom: '8px' }}>{currentOption.label}</div>
-                    
-                    {currentOption.detail && <div style={{ fontSize: '14px', marginBottom: '8px' }}>{currentOption.detail}</div>}
-                    
-                    {currentOption.supplier && <div style={{marginBottom: '4px'}}>Supplier: {currentOption.supplier}</div>}
-                    {currentOption.warranty && <div>Warranty: {currentOption.warranty}</div>}
-                    
-                    {currentOption.product_link && (
-                      <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer" 
-                         style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-                        <ExternalLink size={16} /> View Product Page
-                      </a>
-                    )}
-                  </div>
-                )}
-
-                <input
-                  type="text"
-                  placeholder="Project-specific note (optional)"
-                  value={selection.project_note || ''}
-                  onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '16px' }}
-                />
-
-                {!isConfirmed && (
-                  <button 
-                    onClick={() => confirmSelection(item.id)}
-                    style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '500' }}
-                  >
-                    Confirm Selection
-                  </button>
-                )}
-
-                {isConfirmed && isAdmin && (
-                  <button 
-                    onClick={() => onSelectOption(item.id, null)}
-                    style={{ 
-                      padding: '8px 20px', 
-                      background: '#f3f4f6', 
-                      color: '#4b5563', 
-                      border: '1px solid #d1d5db', 
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock for Editing
-                  </button>
-                )}
-              </div>
-            );
-          })}
+      {error && (
+        <div style={{ padding: '16px', background: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '20px' }}>
+          {error}
         </div>
       )}
+
+      {sections.map((section, sIndex) => (
+        <div key={sIndex} style={{ marginBottom: '40px' }}>
+          <h3 style={{ fontSize: '22px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' }}>
+            {section.name}
+          </h3>
+
+          {section.items.map((item, iIndex) => (
+            <div key={iIndex} style={{ 
+              background: '#fff', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '12px', 
+              padding: '20px', 
+              marginBottom: '20px' 
+            }}>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>{item.label}</strong>
+                {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
+              </div>
+
+              {item.options && item.options.length > 0 ? (
+                item.options.map(opt => (
+                  <div key={opt.id} style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{opt.label}</div>
+                      {opt.detail && <div style={{ fontSize: '13px' }}>{opt.detail}</div>}
+                      {opt.supplier && <div>Supplier: {opt.supplier}</div>}
+                      {opt.warranty && <div>Warranty: {opt.warranty}</div>}
+                    </div>
+                    <button onClick={() => deleteOption(opt.id)} style={{ color: '#ef4444' }}>
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p style={{ color: '#888', fontStyle: 'italic' }}>No options yet</p>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

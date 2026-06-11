@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 export function useSchedule(projectId) {
   const [itemsBySection, setItemsBySection] = useState([]);
   const [selections, setSelections] = useState({});
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -105,6 +106,29 @@ export function useSchedule(projectId) {
     }
   }, [projectId]);
 
+  const confirmSelection = useCallback(async (itemId) => {
+    setSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from('sched_project_selections')
+        .upsert({
+          project_id: projectId,
+          item_id: itemId,
+          status: 'confirmed',
+        }, { onConflict: 'project_id,item_id' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setSelections(prev => ({ ...prev, [itemId]: data }));
+    } catch (e) {
+      console.error(e);
+      alert('Failed to confirm selection');
+    } finally {
+      setSaving(false);
+    }
+  }, [projectId]);
+
   const updateNote = useCallback(async (itemId, note) => {
     const existing = selections[itemId];
     setSaving(true);
@@ -137,6 +161,7 @@ export function useSchedule(projectId) {
     error,
     saving,
     selectOption,
+    confirmSelection,
     updateNote,
     reload: load,
   };

@@ -6,13 +6,15 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, Edit2 } from 'lucide-react';
+import { RefreshCw, Trash2, Edit2, Save, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ScheduleAdminPanel() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
     loadData();
@@ -22,12 +24,12 @@ export default function ScheduleAdminPanel() {
     setLoading(true);
     setError('');
     try {
-      const { data, error: queryError } = await supabase
+      const { data, error: qError } = await supabase
         .from('v_sched_master')
         .select('*')
-        .order('section_order, item_order');   // using columns that exist
+        .order('section_order, item_order');
 
-      if (queryError) throw queryError;
+      if (qError) throw qError;
 
       const grouped = (data || []).reduce((acc, row) => {
         let section = acc.find(s => s.name === row.section);
@@ -38,11 +40,7 @@ export default function ScheduleAdminPanel() {
 
         let item = section.items.find(i => i.label === row.item);
         if (!item) {
-          item = { 
-            label: row.item, 
-            cbi_code: row.cbi_code || '', 
-            options: [] 
-          };
+          item = { label: row.item, cbi_code: row.cbi_code, options: [] };
           section.items.push(item);
         }
 
@@ -68,83 +66,95 @@ export default function ScheduleAdminPanel() {
     }
   }
 
-  const deleteOption = async (id) => {
-    if (!window.confirm('Delete this option?')) return;
-    const { error } = await supabase.from('sched_item_options').delete().eq('id', id);
-    if (error) alert('Delete failed');
-    else loadData();
+  const startEdit = (opt) => {
+    setEditingId(opt.id);
+    setEditForm({ ...opt });
   };
 
-  if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading master data...</div>;
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const { error } = await supabase
+      .from('sched_item_options')
+      .update({
+        label: editForm.label,
+        detail: editForm.detail,
+        warranty: editForm.warranty,
+        supplier: editForm.supplier,
+        model_ref: editForm.model_ref
+      })
+      .eq('id', editingId);
+
+    if (error) {
+      alert('Save failed: ' + error.message);
+    } else {
+      setEditingId(null);
+      loadData();
+    }
+  };
+
+  const deleteOption = async (id) => {
+    if (!window.confirm('Delete this option?')) return;
+    await supabase.from('sched_item_options').delete().eq('id', id);
+    loadData();
+  };
+
+  if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading master schedule...</div>;
 
   return (
     <div>
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Master Schedule — All Sections & Products</h2>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between' }}>
+        <h2>Master Schedule — Editable</h2>
         <button onClick={loadData} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8 }}>
           <RefreshCw size={16} /> Refresh
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding: '16px', background: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '20px' }}>
-          Error: {error}
-        </div>
-      )}
+      {error && <div style={{ padding: '12px', background: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '20px' }}>{error}</div>}
 
       {sections.map(section => (
         <div key={section.name} style={{ marginBottom: '40px' }}>
-          <h3 style={{ fontSize: '22px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '22px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' }}>
             {section.name}
           </h3>
 
           {section.items.map(item => (
             <div key={item.label} style={{ 
-              background: '#fff', 
-              border: '1px solid #e2e8f0', 
-              borderRadius: '12px', 
-              padding: '20px', 
-              marginBottom: '24px' 
+              background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px' 
             }}>
-              <div style={{ marginBottom: '16px' }}>
-                <strong>{item.label}</strong>
-                {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
-              </div>
+              <strong>{item.label}</strong>
+              {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
 
-              {item.options && item.options.length > 0 ? (
-                item.options.map(opt => (
-                  <div key={opt.id} style={{ 
-                    padding: '14px', 
-                    background: '#f8fafc', 
-                    borderRadius: '8px', 
-                    marginBottom: '12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start'
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500 }}>{opt.label}</div>
-                      {opt.detail && <div style={{ fontSize: '13px', color: '#444' }}>{opt.detail}</div>}
-                      {(opt.supplier || opt.warranty) && (
-                        <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                          {opt.supplier && `Supplier: ${opt.supplier}`} 
-                          {opt.warranty && ` | Warranty: ${opt.warranty}`}
-                        </div>
-                      )}
-                    </div>
+              {item.options.map(opt => (
+                <div key={opt.id} style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', marginTop: '12px' }}>
+                  {editingId === opt.id ? (
                     <div>
-                      <button onClick={() => alert('Full edit form coming next')} style={{ color: '#3b82f6', marginRight: '12px' }}>
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => deleteOption(opt.id)} style={{ color: '#ef4444' }}>
-                        <Trash2 size={18} />
-                      </button>
+                      <input value={editForm.label || ''} onChange={e => setEditForm({...editForm, label: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px'}} placeholder="Label" />
+                      <textarea value={editForm.detail || ''} onChange={e => setEditForm({...editForm, detail: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px', minHeight:'70px'}} placeholder="Detail / Specification" />
+                      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px'}}>
+                        <input value={editForm.supplier || ''} onChange={e => setEditForm({...editForm, supplier: e.target.value})} placeholder="Supplier" />
+                        <input value={editForm.warranty || ''} onChange={e => setEditForm({...editForm, warranty: e.target.value})} placeholder="Warranty" />
+                      </div>
+                      <div style={{marginTop:'12px'}}>
+                        <button onClick={saveEdit} style={{background:'#166534', color:'white', padding:'6px 16px', borderRadius:'6px', marginRight:'8px'}}>Save</button>
+                        <button onClick={() => setEditingId(null)} style={{padding:'6px 16px'}}>Cancel</button>
+                      </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p style={{ color: '#888' }}>No options yet</p>
-              )}
+                  ) : (
+                    <div style={{display:'flex', justifyContent:'space-between'}}>
+                      <div>
+                        <div style={{fontWeight:500}}>{opt.label}</div>
+                        {opt.detail && <div style={{fontSize:'13px'}}>{opt.detail}</div>}
+                        {opt.supplier && <div>Supplier: {opt.supplier}</div>}
+                        {opt.warranty && <div>Warranty: {opt.warranty}</div>}
+                      </div>
+                      <div>
+                        <button onClick={() => startEdit(opt)} style={{color:'#3b82f6', marginRight:'12px'}}><Edit2 size={18}/></button>
+                        <button onClick={() => deleteOption(opt.id)} style={{color:'#ef4444'}}><Trash2 size={18}/></button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           ))}
         </div>

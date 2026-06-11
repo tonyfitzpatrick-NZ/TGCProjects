@@ -75,6 +75,8 @@ export default function ScheduleAdminPanel() {
   const saveEdit = async () => {
     if (!editingOptionId) return;
 
+    console.log("Saving:", editingOptionId, editOptionForm);
+
     const { error } = await supabase
       .from('sched_item_options')
       .update({
@@ -82,40 +84,40 @@ export default function ScheduleAdminPanel() {
         detail: editOptionForm.detail,
         warranty: editOptionForm.warranty,
         supplier: editOptionForm.supplier,
-        product_link: editOptionForm.product_link,
-        codemark_link: editOptionForm.codemark_link,
-        branz_link: editOptionForm.branz_link,
-        certificate_notes: editOptionForm.certificate_notes
+        product_link: editOptionForm.product_link || null,
+        codemark_link: editOptionForm.codemark_link || null,
+        branz_link: editOptionForm.branz_link || null,
+        certificate_notes: editOptionForm.certificate_notes || null
       })
       .eq('id', editingOptionId);
 
     if (error) {
+      console.error(error);
       alert('Save failed: ' + error.message);
     } else {
-      alert('✅ Saved successfully!');
+      alert('✅ Saved successfully! Refreshing...');
       setEditingOptionId(null);
-      loadData();
+      setEditOptionForm({});
+      await loadData(); // Force reload
     }
   };
 
   const deleteOption = async (id) => {
-    if (!window.confirm('Delete this option?')) return;
+    if (!window.confirm('Delete?')) return;
     await supabase.from('sched_item_options').delete().eq('id', id);
     loadData();
   };
 
-  if (loading) return <div style={{ padding: '100px', textAlign: 'center' }}>Loading master schedule...</div>;
+  if (loading) return <div style={{ padding: '100px', textAlign: 'center' }}>Loading...</div>;
 
   return (
     <div>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between' }}>
-        <h2>Master Schedule — Editable</h2>
-        <button onClick={loadData} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8 }}>
-          <RefreshCw size={16} /> Refresh
-        </button>
+        <h2>Master Schedule</h2>
+        <button onClick={loadData}><RefreshCw size={16} /> Refresh</button>
       </div>
 
-      {error && <div style={{ color: 'red', padding: '10px' }}>{error}</div>}
+      {error && <div style={{ color: 'red' }}>{error}</div>}
 
       {sections.map(section => (
         <div key={section.name} style={{ marginBottom: '40px' }}>
@@ -128,51 +130,23 @@ export default function ScheduleAdminPanel() {
                 <div key={opt.id} style={{ padding: '12px', background: '#f8fafc', marginTop: '10px', borderRadius: '6px' }}>
                   {editingOptionId === opt.id ? (
                     <div>
-                      <input 
-                        value={editOptionForm.label || ''} 
-                        onChange={e => setEditOptionForm({...editOptionForm, label: e.target.value})} 
-                        style={{width:'100%', marginBottom:'8px'}} 
-                      />
-                      <textarea 
-                        value={editOptionForm.detail || ''} 
-                        onChange={e => setEditOptionForm({...editOptionForm, detail: e.target.value})} 
-                        style={{width:'100%', marginBottom:'8px'}} 
-                      />
-                      <input 
-                        value={editOptionForm.supplier || ''} 
-                        onChange={e => setEditOptionForm({...editOptionForm, supplier: e.target.value})} 
-                        placeholder="Supplier" 
-                        style={{width:'100%', marginBottom:'8px'}} 
-                      />
-                      <input 
-                        value={editOptionForm.warranty || ''} 
-                        onChange={e => setEditOptionForm({...editOptionForm, warranty: e.target.value})} 
-                        placeholder="Warranty" 
-                        style={{width:'100%', marginBottom:'8px'}} 
-                      />
-                      <input 
-                        value={editOptionForm.product_link || ''} 
-                        onChange={e => setEditOptionForm({...editOptionForm, product_link: e.target.value})} 
-                        placeholder="Product Link" 
-                        style={{width:'100%', marginBottom:'8px'}} 
-                      />
-                      <div style={{marginTop:'12px'}}>
-                        <button onClick={saveEdit} style={{background:'#166534', color:'white', padding:'6px 16px', marginRight:'8px'}}>Save</button>
-                        <button onClick={() => setEditingOptionId(null)}>Cancel</button>
-                      </div>
+                      <input value={editOptionForm.label || ''} onChange={e => setEditOptionForm({...editOptionForm, label: e.target.value})} style={{width:'100%', marginBottom:'8px'}} />
+                      <textarea value={editOptionForm.detail || ''} onChange={e => setEditOptionForm({...editOptionForm, detail: e.target.value})} style={{width:'100%', marginBottom:'8px'}} />
+                      <input value={editOptionForm.supplier || ''} onChange={e => setEditOptionForm({...editOptionForm, supplier: e.target.value})} placeholder="Supplier" style={{width:'100%', marginBottom:'8px'}} />
+                      <input value={editOptionForm.warranty || ''} onChange={e => setEditOptionForm({...editOptionForm, warranty: e.target.value})} placeholder="Warranty" style={{width:'100%', marginBottom:'8px'}} />
+                      <input value={editOptionForm.product_link || ''} onChange={e => setEditOptionForm({...editOptionForm, product_link: e.target.value})} placeholder="Product Link https://" style={{width:'100%', marginBottom:'8px'}} />
+                      <button onClick={saveEdit} style={{background:'#166534', color:'white', padding:'6px 16px', marginRight:'8px'}}>Save</button>
+                      <button onClick={() => setEditingOptionId(null)}>Cancel</button>
                     </div>
                   ) : (
-                    <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                      <div>
-                        <div style={{fontWeight: '500'}}>{opt.label}</div>
-                        {opt.detail && <div style={{fontSize: '13px'}}>{opt.detail}</div>}
-                        {opt.supplier && <div>Supplier: {opt.supplier}</div>}
-                        {opt.warranty && <div>Warranty: {opt.warranty}</div>}
-                      </div>
-                      <div>
-                        <button onClick={() => startEdit(opt)} style={{color: '#3b82f6', marginRight: '12px'}}><Edit2 size={18}/></button>
-                        <button onClick={() => deleteOption(opt.id)} style={{color: '#ef4444'}}><Trash2 size={18}/></button>
-                      </div>
+                    <div>
+                      <div style={{fontWeight:500}}>{opt.label}</div>
+                      {opt.detail && <div>{opt.detail}</div>}
+                      {opt.supplier && <div>Supplier: {opt.supplier}</div>}
+                      {opt.warranty && <div>Warranty: {opt.warranty}</div>}
+                      {opt.product_link && <div>Link: <a href={opt.product_link} target="_blank">Open</a></div>}
+                      <button onClick={() => startEdit(opt)} style={{marginRight:'8px'}}><Edit2 size={16}/></button>
+                      <button onClick={() => deleteOption(opt.id)} style={{color:'red'}}><Trash2 size={16}/></button>
                     </div>
                   )}
                 </div>

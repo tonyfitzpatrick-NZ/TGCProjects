@@ -48,6 +48,7 @@ function App() {
                   <Route path="/admin/applications" element={<AdminApplicationTemplatesPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="/admin/schedule" element={<AdminSchedulePage />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

@@ -4,14 +4,16 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Lock } from 'lucide-react';
 
 export default function ScheduleSection({ 
   section, 
   items = [], 
   selections = {}, 
   onSelectOption, 
-  onUpdateNote 
+  onUpdateNote,
+  confirmSelection,
+  isAdmin 
 }) {
   const [open, setOpen] = useState(true);
 
@@ -46,6 +48,7 @@ export default function ScheduleSection({
             const selectedOptionId = selection.option_id;
             const options = item.options || [];
             const currentOption = options.find(o => o.id === selectedOptionId) || options.find(o => o.is_default);
+            const isConfirmed = selection.status === 'confirmed';
 
             return (
               <div key={item.id} style={{ 
@@ -53,23 +56,29 @@ export default function ScheduleSection({
                 border: '1px solid #f1f5f9', 
                 borderRadius: '10px', 
                 marginBottom: '16px',
-                background: '#fff'
+                background: '#fff',
+                opacity: isConfirmed ? 0.95 : 1
               }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <strong>{item.label}</strong>
-                  {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
+                  </div>
+                  {isConfirmed && <div style={{ color: '#166534' }}><CheckCircle size={18} /> Confirmed</div>}
                 </div>
 
                 <select
                   value={selectedOptionId || ''}
-                  onChange={(e) => onSelectOption(item.id, e.target.value || null)}
+                  onChange={(e) => !isConfirmed && onSelectOption(item.id, e.target.value || null)}
+                  disabled={isConfirmed && !isAdmin}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
                     borderRadius: '8px',
                     border: '1px solid #d1d5db',
                     fontSize: '14px',
-                    marginBottom: '12px'
+                    marginBottom: '12px',
+                    background: isConfirmed ? '#f9fafb' : '#fff'
                   }}
                 >
                   <option value="">— Select option —</option>
@@ -81,7 +90,7 @@ export default function ScheduleSection({
                 </select>
 
                 {currentOption && (
-                  <div style={{ fontSize: '13px', color: '#166534', background: '#f0fdf4', padding: '10px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: '#166534', background: '#f0fdf4', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
                     Selected: {currentOption.label}
                   </div>
                 )}
@@ -91,14 +100,27 @@ export default function ScheduleSection({
                   placeholder="Project-specific note (optional)"
                   value={selection.project_note || ''}
                   onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ 
-                    width: '100%', 
-                    padding: '8px 12px', 
-                    borderRadius: '8px', 
-                    border: '1px solid #ddd',
-                    marginTop: '8px'
-                  }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd' }}
                 />
+
+                {/* Confirm Button */}
+                {!isConfirmed && (
+                  <button 
+                    onClick={() => confirmSelection(item.id)}
+                    style={{ marginTop: '12px', padding: '6px 16px', background: '#166534', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px' }}
+                  >
+                    Confirm Selection
+                  </button>
+                )}
+
+                {isConfirmed && isAdmin && (
+                  <button 
+                    onClick={() => onSelectOption(item.id, null)}
+                    style={{ marginTop: '12px', padding: '6px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px' }}
+                  >
+                    <Lock size={14} style={{ marginRight: 6 }} /> Unlock for Edit
+                  </button>
+                )}
               </div>
             );
           })}

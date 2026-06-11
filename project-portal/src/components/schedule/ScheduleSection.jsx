@@ -17,26 +17,39 @@ export default function ScheduleSection({
 }) {
   const [open, setOpen] = useState(true);
 
-  // Detect cladding items
-  const isCladdingItem = (item) => 
+  // Special Cladding Grouping
+  const claddingItems = items.filter(item => 
     item.label.toLowerCase().includes('cladding') || 
     item.label.toLowerCase().includes('weatherboard') ||
     item.label.toLowerCase().includes('metal sheet') ||
     item.label.toLowerCase().includes('metal tray') ||
     item.label.toLowerCase().includes('plaster') ||
-    item.label.toLowerCase().includes('plywood');
+    item.label.toLowerCase().includes('plywood')
+  );
 
-  const claddingItems = items.filter(item => isCladdingItem(item));
-  const normalItems = items.filter(item => !isCladdingItem(item));
-
-  // Cladding grouping
   if (claddingItems.length > 0) {
+    // Collect ALL unique cladding options from all cladding items
     const allOptions = claddingItems.flatMap(item => item.options || []);
     const uniqueOptions = Array.from(new Map(allOptions.map(o => [o.id, o])).values());
 
     return (
       <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-        <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            width: '100%',
+            padding: '16px 20px',
+            textAlign: 'left',
+            background: '#f8fafc',
+            border: 'none',
+            fontSize: '17px',
+            fontWeight: '600',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+        >
           Cladding (up to 3 choices)
         </button>
 
@@ -58,7 +71,9 @@ export default function ScheduleSection({
                   >
                     <option value="">— Select cladding —</option>
                     {uniqueOptions.map(opt => (
-                      <option key={opt.id} value={opt.id}>{opt.label}</option>
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
                     ))}
                   </select>
                   {current && (
@@ -75,10 +90,25 @@ export default function ScheduleSection({
     );
   }
 
-  // Normal items
+  // Normal section
   return (
     <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-      <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%',
+          padding: '16px 20px',
+          textAlign: 'left',
+          background: '#f8fafc',
+          border: 'none',
+          fontSize: '17px',
+          fontWeight: '600',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
+      >
         {section.name}
         <span style={{ fontSize: '14px', color: '#64748b' }}>{items.length} items</span>
       </button>

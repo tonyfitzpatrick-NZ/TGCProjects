@@ -9,9 +9,9 @@ import React from 'react';
 
 export default function ScheduleAdminPanel() {
   return (
-    <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-      <p>Schedule Admin Panel Placeholder</p>
-      <p style={{ fontSize: '14px' }}>Full functionality is being prepared.</p>
+    <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>
+      <p>Schedule Admin Panel</p>
+      <p style={{ fontSize: '15px' }}>Full functionality coming soon.</p>
     </div>
   );
 }

@@ -17,70 +17,43 @@ export default function ScheduleSection({
 }) {
   const [open, setOpen] = useState(true);
 
-  // Special Cladding Grouping
-  const claddingItems = items.filter(item => 
-    item.label.toLowerCase().includes('cladding') || 
-    item.label.toLowerCase().includes('weatherboard') ||
-    item.label.toLowerCase().includes('metal sheet') ||
-    item.label.toLowerCase().includes('metal tray') ||
-    item.label.toLowerCase().includes('plaster') ||
-    item.label.toLowerCase().includes('plywood')
-  );
+  // Cladding grouping
+  const isCladding = (label) => label.toLowerCase().includes('cladding') || 
+                               label.toLowerCase().includes('weatherboard') ||
+                               label.toLowerCase().includes('metal');
+
+  const claddingItems = items.filter(item => isCladding(item.label));
+  const normalItems = items.filter(item => !isCladding(item.label));
 
   if (claddingItems.length > 0) {
-    // Collect ALL unique cladding options from all cladding items
+    // Collect all unique cladding options
     const allOptions = claddingItems.flatMap(item => item.options || []);
     const uniqueOptions = Array.from(new Map(allOptions.map(o => [o.id, o])).values());
 
     return (
-      <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-        <button
-          onClick={() => setOpen(!open)}
-          style={{
-            width: '100%',
-            padding: '16px 20px',
-            textAlign: 'left',
-            background: '#f8fafc',
-            border: 'none',
-            fontSize: '17px',
-            fontWeight: '600',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            cursor: 'pointer'
-          }}
-        >
+      <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff' }}>
+        <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
           Cladding (up to 3 choices)
         </button>
 
         {open && (
           <div style={{ padding: '20px' }}>
-            {[1, 2, 3].map(num => {
-              const fieldKey = `cladding_${num}`;
-              const selection = selections[fieldKey] || {};
-              const selectedId = selection.option_id;
-              const current = uniqueOptions.find(o => o.id === selectedId);
-
+            {[1,2,3].map(n => {
+              const key = `cladding_${n}`;
+              const sel = selections[key] || {};
               return (
-                <div key={num} style={{ marginBottom: '20px', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                  <strong>Cladding {num}</strong>
+                <div key={n} style={{ marginBottom: '16px', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                  <strong>Cladding {n}</strong>
                   <select
-                    value={selectedId || ''}
-                    onChange={(e) => onSelectOption(fieldKey, e.target.value || null)}
-                    style={{ width: '100%', padding: '10px 12px', marginTop: '8px', borderRadius: '8px' }}
+                    value={sel.option_id || ''}
+                    onChange={e => onSelectOption(key, e.target.value || null)}
+                    style={{ width: '100%', padding: '10px', marginTop: '8px', borderRadius: '8px' }}
                   >
                     <option value="">— Select cladding —</option>
                     {uniqueOptions.map(opt => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </option>
+                      <option key={opt.id} value={opt.id}>{opt.label}</option>
                     ))}
                   </select>
-                  {current && (
-                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#166534' }}>
-                      Selected: {current.label}
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -90,48 +63,32 @@ export default function ScheduleSection({
     );
   }
 
-  // Normal section
+  // Normal sections
   return (
     <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          padding: '16px 20px',
-          textAlign: 'left',
-          background: '#f8fafc',
-          border: 'none',
-          fontSize: '17px',
-          fontWeight: '600',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer'
-        }}
-      >
-        {section.name}
-        <span style={{ fontSize: '14px', color: '#64748b' }}>{items.length} items</span>
+      <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
+        {section.name} <span style={{ fontSize: '14px', color: '#64748b' }}>{items.length} items</span>
       </button>
 
       {open && (
         <div style={{ padding: '16px 20px' }}>
           {items.map(item => {
             const selection = selections[item.id] || {};
-            const selectedOptionId = selection.option_id;
+            const selectedId = selection.option_id;
             const options = item.options || [];
-            const currentOption = options.find(o => o.id === selectedOptionId) || options.find(o => o.is_default);
+            const current = options.find(o => o.id === selectedId) || options.find(o => o.is_default);
             const isConfirmed = selection.status === 'confirmed';
 
             return (
-              <div key={item.id} style={{ padding: '16px', border: '1px solid #f1f5f9', borderRadius: '10px', marginBottom: '16px', background: '#fff' }}>
+              <div key={item.id} style={{ padding: '16px', border: '1px solid #f1f5f9', borderRadius: '10px', marginBottom: '16px' }}>
                 <div style={{ marginBottom: '12px' }}>
                   <strong>{item.label}</strong>
                   {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
                 <select
-                  value={selectedOptionId || ''}
-                  onChange={(e) => onSelectOption(item.id, e.target.value || null)}
+                  value={selectedId || ''}
+                  onChange={e => onSelectOption(item.id, e.target.value || null)}
                   disabled={isConfirmed && !isAdmin}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px' }}
                 >
@@ -141,18 +98,14 @@ export default function ScheduleSection({
                   ))}
                 </select>
 
-                {currentOption && (
-                  <div style={{ fontSize: '13px', color: '#166534', background: '#f0fdf4', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
-                    Selected: {currentOption.label}
-                  </div>
-                )}
+                {current && <div style={{ color: '#166534', fontSize: '13px' }}>Selected: {current.label}</div>}
 
                 <input
                   type="text"
                   placeholder="Project-specific note (optional)"
                   value={selection.project_note || ''}
-                  onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd' }}
+                  onChange={e => onUpdateNote(item.id, e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', marginTop: '8px' }}
                 />
 
                 {!isConfirmed && (

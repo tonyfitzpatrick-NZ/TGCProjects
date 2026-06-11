@@ -49,8 +49,8 @@ export default function ScheduleSection({
             const hasSelection = !!selectedId;
             const isConfirmed = selection.status === 'confirmed';
 
-            // Edit mode only when admin unlocks it
-            const showEditControls = isAdmin && (!isConfirmed || !hasSelection);
+            // Show edit controls if admin and (no selection yet OR confirmed and unlocked)
+            const showEditMode = isAdmin && (!hasSelection || !isConfirmed);
 
             return (
               <div key={item.id} style={{ 
@@ -65,8 +65,8 @@ export default function ScheduleSection({
                   {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
-                {/* VIEW MODE - Clean */}
-                {!showEditControls && currentOption && (
+                {/* VIEW MODE - Clean display */}
+                {!showEditMode && currentOption && (
                   <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '18px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>
                       {currentOption.label}
@@ -79,7 +79,7 @@ export default function ScheduleSection({
                       </div>
                     )}
 
-                    {/* Links */}
+                    {/* Link Icons */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {currentOption.product_link && (
                         <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer"
@@ -110,7 +110,7 @@ export default function ScheduleSection({
                 )}
 
                 {/* EDIT MODE */}
-                {showEditControls && (
+                {showEditMode && (
                   <>
                     <select
                       value={selectedId || ''}
@@ -140,7 +140,7 @@ export default function ScheduleSection({
                   </>
                 )}
 
-                {/* Buttons */}
+                {/* Action Buttons */}
                 {!isConfirmed && (
                   <button 
                     onClick={() => confirmSelection(item.id)}
@@ -150,7 +150,7 @@ export default function ScheduleSection({
                   </button>
                 )}
 
-                {isConfirmed && isAdmin && !showEditControls && (
+                {isConfirmed && isAdmin && !showEditMode && (
                   <button 
                     onClick={() => onSelectOption(item.id, null)}
                     style={{ padding: '8px 20px', background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', borderRadius: '8px' }}

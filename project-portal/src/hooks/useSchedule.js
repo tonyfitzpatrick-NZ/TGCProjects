@@ -100,7 +100,53 @@ export function useSchedule(projectId) {
   }, [load]);
 
   // ... rest of your existing functions (selectOption, confirmSelection, updateNote, etc.) stay the same
+  const selectOption = useCallback(async (itemId, optionId) => {
+    setSelections(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], option_id: optionId }
+    }));
+  }, []);
 
+  const updateNote = useCallback(async (itemId, note) => {
+    setSelections(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], project_note: note }
+    }));
+  }, []);
+
+  const confirmSelection = useCallback(async (itemId) => {
+    const current = selections[itemId];
+    if (!current?.option_id) return;
+
+    try {
+      await supabase
+        .from('sched_project_selections')
+        .upsert({
+          project_id: projectId,
+          item_id: itemId,
+          option_id: current.option_id,
+          status: 'confirmed',
+          project_note: current.project_note || null
+        }, { onConflict: 'project_id,item_id' });
+
+      // Refresh to get latest status
+      await load();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to save selection');
+    }
+  }, [selections, projectId, load]);
+
+  return {
+    itemsBySection,
+    selections,
+    loading,
+    error,
+    refresh: load,
+    selectOption,
+    updateNote,
+    confirmSelection
+  };
   return {
     itemsBySection,
     selections,

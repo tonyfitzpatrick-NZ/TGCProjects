@@ -13,6 +13,7 @@ export function useSchedule(projectId) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!projectId) {
@@ -23,6 +24,7 @@ export function useSchedule(projectId) {
     setError(null);
 
     try {
+      // Load full project schedule with options
       const { data: projectData } = await supabase
         .from('v_sched_project')
         .select('*')
@@ -32,7 +34,11 @@ export function useSchedule(projectId) {
       const grouped = (projectData || []).reduce((acc, row) => {
         let section = acc.find(s => s.name === row.section);
         if (!section) {
-          section = { id: row.section, name: row.section, items: [] };
+          section = { 
+            id: row.section, 
+            name: row.section, 
+            items: [] 
+          };
           acc.push(section);
         }
 
@@ -65,6 +71,7 @@ export function useSchedule(projectId) {
 
       setItemsBySection(grouped);
 
+      // Load project selections
       const { data: sels } = await supabase
         .from('sched_project_selections')
         .select('*')
@@ -72,20 +79,29 @@ export function useSchedule(projectId) {
       
       setSelections(Object.fromEntries((sels || []).map(s => [s.item_id, s])));
 
-      const { data: tmpls } = await supabase.from('sched_templates').select('*');
+      // Load templates
+      const { data: tmpls } = await supabase
+        .from('sched_templates')
+        .select('*')
+        .eq('is_active', true);
+      
       setTemplates(tmpls || []);
 
     } catch (e) {
-      console.error(e);
+      console.error('Schedule load error:', e);
       setError(e.message);
     } finally {
       setLoading(false);
     }
   }, [projectId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
+  // Select / Change option
   const selectOption = useCallback(async (itemId, optionId) => {
+    setSaving(true);
     try {
       const { data, error } = await supabase
         .from('sched_project_selections')
@@ -107,11 +123,15 @@ export function useSchedule(projectId) {
     } catch (e) {
       console.error(e);
       alert('Failed to save selection');
+    } finally {
+      setSaving(false);
     }
   }, [projectId]);
 
+  // Update note
   const updateNote = useCallback(async (itemId, note) => {
     const existing = selections[itemId];
+    setSaving(true);
     try {
       const { data, error } = await supabase
         .from('sched_project_selections')
@@ -120,7 +140,7 @@ export function useSchedule(projectId) {
           item_id: itemId,
           option_id: existing?.option_id || null,
           status: existing?.status || 'specified',
-          project_note: note,
+          project_note: note || null,
         }, { onConflict: 'project_id,item_id' })
         .select()
         .single();
@@ -129,8 +149,28 @@ export function useSchedule(projectId) {
       setSelections(prev => ({ ...prev, [itemId]: data }));
     } catch (e) {
       console.error(e);
+    } finally {
+      setSaving(false);
     }
   }, [projectId, selections]);
+
+  // Apply template
+  const applyTemplateToProject = useCallback(async (templateId) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ sched_template_id: templateId, sched_stage: 'design' })
+        .eq('id', projectId);
+      if (error) throw error;
+      await load(); // refresh
+    } catch (e) {
+      console.error(e);
+      alert('Failed to apply template');
+    } finally {
+      setSaving(false);
+    }
+  }, [projectId, load]);
 
   const stats = {
     total: itemsBySection.reduce((sum, s) => sum + (s.items?.length || 0), 0),
@@ -147,8 +187,10 @@ export function useSchedule(projectId) {
     stats,
     loading,
     error,
+    saving,
     selectOption,
     updateNote,
+    applyTemplateToProject,
     reload: load,
   };
 }

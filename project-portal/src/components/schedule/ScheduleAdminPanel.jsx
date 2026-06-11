@@ -6,7 +6,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { CheckCircle, Edit3, ExternalLink } from 'lucide-react';
+import { Edit3, ExternalLink } from 'lucide-react';
 
 export default function ScheduleSection({ 
   section, 
@@ -94,7 +94,7 @@ export default function ScheduleSection({
                     
                     {currentOption.detail && <div style={{ fontSize: '14px', marginBottom: '8px' }}>{currentOption.detail}</div>}
                     
-                    {currentOption.supplier && <div>Supplier: {currentOption.supplier}</div>}
+                    {currentOption.supplier && <div style={{marginBottom: '4px'}}>Supplier: {currentOption.supplier}</div>}
                     {currentOption.warranty && <div>Warranty: {currentOption.warranty}</div>}
                     
                     {currentOption.product_link && (

@@ -134,9 +134,14 @@ export function useSchedule(projectId) {
   }, [projectId, selections]);
 
   const applyTemplateToProject = useCallback(async (templateId) => {
-    if (!templateId) return;
+    if (!templateId) {
+      alert("Please select a template first");
+      return;
+    }
     setSaving(true);
     try {
+      console.log("Applying template:", templateId, "to project:", projectId);
+
       const { error } = await supabase
         .from('projects')
         .update({ 
@@ -145,12 +150,15 @@ export function useSchedule(projectId) {
         })
         .eq('id', projectId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Update error:", error);
+        throw error;
+      }
 
       alert('✅ Template applied successfully!');
-      await load();   // Refresh everything
+      await load();   // Refresh the schedule
     } catch (e) {
-      console.error(e);
+      console.error("Apply template error:", e);
       alert('Failed to apply template: ' + (e.message || e));
     } finally {
       setSaving(false);

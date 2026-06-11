@@ -17,26 +17,49 @@ export default function ScheduleSection({
 }) {
   const [open, setOpen] = useState(true);
 
-  // Special handling for Cladding
-  const isCladdingSection = section.name.toLowerCase().includes('cladding');
+  // Special Cladding Grouping
+  const isCladdingItem = (itemName) => 
+    itemName.toLowerCase().includes('cladding') || 
+    itemName.toLowerCase().includes('weatherboard') ||
+    itemName.toLowerCase().includes('metal sheet') ||
+    itemName.toLowerCase().includes('metal tray');
 
-  if (isCladdingSection) {
-    // Group all cladding options
-    const claddingOptions = items.flatMap(item => item.options || []);
-    const uniqueCladdingOptions = Array.from(new Map(claddingOptions.map(o => [o.id, o])).values());
+  const claddingItems = items.filter(item => isCladdingItem(item.label));
+  const normalItems = items.filter(item => !isCladdingItem(item.label));
+
+  // If this section has cladding items, show grouped version
+  if (claddingItems.length > 0) {
+    const allCladdingOptions = claddingItems.flatMap(item => item.options || []);
+    const uniqueOptions = Array.from(new Map(allCladdingOptions.map(o => [o.id, o])).values());
 
     return (
       <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-        <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
-          Cladding (Multiple allowed)
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            width: '100%',
+            padding: '16px 20px',
+            textAlign: 'left',
+            background: '#f8fafc',
+            border: 'none',
+            fontSize: '17px',
+            fontWeight: '600',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          Cladding (up to 3 choices)
         </button>
 
         {open && (
           <div style={{ padding: '20px' }}>
             {[1, 2, 3].map(num => {
               const fieldKey = `cladding_${num}`;
-              const selectedId = selections[fieldKey]?.option_id;
-              const current = uniqueCladdingOptions.find(o => o.id === selectedId);
+              const selection = selections[fieldKey] || {};
+              const selectedId = selection.option_id;
+              const current = uniqueOptions.find(o => o.id === selectedId);
 
               return (
                 <div key={num} style={{ marginBottom: '20px', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
@@ -44,10 +67,10 @@ export default function ScheduleSection({
                   <select
                     value={selectedId || ''}
                     onChange={(e) => onSelectOption(fieldKey, e.target.value || null)}
-                    style={{ width: '100%', padding: '10px', marginTop: '8px', borderRadius: '8px' }}
+                    style={{ width: '100%', padding: '10px 12px', marginTop: '8px', borderRadius: '8px' }}
                   >
                     <option value="">— Select cladding —</option>
-                    {uniqueCladdingOptions.map(opt => (
+                    {uniqueOptions.map(opt => (
                       <option key={opt.id} value={opt.id}>{opt.label}</option>
                     ))}
                   </select>
@@ -65,11 +88,29 @@ export default function ScheduleSection({
     );
   }
 
-  // Normal sections
+  // Normal section rendering
   return (
     <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-      <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%',
+          padding: '16px 20px',
+          textAlign: 'left',
+          background: '#f8fafc',
+          border: 'none',
+          fontSize: '17px',
+          fontWeight: '600',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
+      >
         {section.name}
+        <span style={{ fontSize: '14px', color: '#64748b' }}>
+          {items.length} items
+        </span>
       </button>
 
       {open && (
@@ -82,7 +123,13 @@ export default function ScheduleSection({
             const isConfirmed = selection.status === 'confirmed';
 
             return (
-              <div key={item.id} style={{ padding: '16px', border: '1px solid #f1f5f9', borderRadius: '10px', marginBottom: '16px', background: '#fff' }}>
+              <div key={item.id} style={{ 
+                padding: '16px', 
+                border: '1px solid #f1f5f9', 
+                borderRadius: '10px', 
+                marginBottom: '16px',
+                background: '#fff'
+              }}>
                 <div style={{ marginBottom: '12px' }}>
                   <strong>{item.label}</strong>
                   {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
@@ -100,24 +147,34 @@ export default function ScheduleSection({
                   ))}
                 </select>
 
-                {currentOption && <div style={{ fontSize: '13px', color: '#166534' }}>Selected: {currentOption.label}</div>}
+                {currentOption && (
+                  <div style={{ fontSize: '13px', color: '#166534', background: '#f0fdf4', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
+                    Selected: {currentOption.label}
+                  </div>
+                )}
 
                 <input
                   type="text"
                   placeholder="Project-specific note (optional)"
                   value={selection.project_note || ''}
                   onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', marginTop: '8px' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd' }}
                 />
 
                 {!isConfirmed && (
-                  <button onClick={() => confirmSelection(item.id)} style={{ marginTop: '12px', padding: '8px 20px', background: '#166534', color: '#fff', border: 'none', borderRadius: '6px' }}>
+                  <button 
+                    onClick={() => confirmSelection(item.id)}
+                    style={{ marginTop: '12px', padding: '8px 20px', background: '#166534', color: '#fff', border: 'none', borderRadius: '6px' }}
+                  >
                     Confirm Selection
                   </button>
                 )}
 
                 {isConfirmed && isAdmin && (
-                  <button onClick={() => onSelectOption(item.id, null)} style={{ marginTop: '12px', padding: '8px 20px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}>
+                  <button 
+                    onClick={() => onSelectOption(item.id, null)}
+                    style={{ marginTop: '12px', padding: '8px 20px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}
+                  >
                     <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock & Edit
                   </button>
                 )}

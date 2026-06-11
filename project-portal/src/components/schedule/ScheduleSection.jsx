@@ -16,6 +16,8 @@ export default function ScheduleSection({
   isAdmin 
 }) {
   const [open, setOpen] = useState(true);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [localSelectedId, setLocalSelectedId] = useState({});
 
   return (
     <div style={{ marginBottom: '28px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
@@ -43,14 +45,12 @@ export default function ScheduleSection({
         <div style={{ padding: '20px' }}>
           {items.map(item => {
             const selection = selections[item.id] || {};
-            const selectedId = selection.option_id;
+            const currentSelectedId = localSelectedId[item.id] ?? selection.option_id;
             const options = item.options || [];
-            const currentOption = options.find(o => o.id === selectedId);
-            const hasSelection = !!selectedId;
+            const currentOption = options.find(o => o.id === currentSelectedId);
+            const hasSelection = !!currentSelectedId;
             const isConfirmed = selection.status === 'confirmed';
-
-            // Show edit controls if admin and (no selection yet OR confirmed and unlocked)
-            const showEditMode = isAdmin && (!hasSelection || !isConfirmed);
+            const isEditingThis = editingItemId === item.id;
 
             return (
               <div key={item.id} style={{ 
@@ -65,8 +65,8 @@ export default function ScheduleSection({
                   {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
-                {/* VIEW MODE - Clean display */}
-                {!showEditMode && currentOption && (
+                {/* VIEW MODE */}
+                {!isEditingThis && currentOption && (
                   <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '18px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>
                       {currentOption.label}
@@ -79,7 +79,7 @@ export default function ScheduleSection({
                       </div>
                     )}
 
-                    {/* Link Icons */}
+                    {/* Links */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {currentOption.product_link && (
                         <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer"
@@ -110,11 +110,15 @@ export default function ScheduleSection({
                 )}
 
                 {/* EDIT MODE */}
-                {showEditMode && (
+                {isEditingThis && (
                   <>
                     <select
-                      value={selectedId || ''}
-                      onChange={(e) => onSelectOption(item.id, e.target.value || null)}
+                      value={currentSelectedId || ''}
+                      onChange={(e) => {
+                        const newId = e.target.value || null;
+                        setLocalSelectedId(prev => ({ ...prev, [item.id]: newId }));
+                        onSelectOption(item.id, newId);
+                      }}
                       style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '16px' }}
                     >
                       <option value="">— Select option —</option>
@@ -140,22 +144,42 @@ export default function ScheduleSection({
                   </>
                 )}
 
-                {/* Action Buttons */}
+                {/* Buttons */}
                 {!isConfirmed && (
                   <button 
-                    onClick={() => confirmSelection(item.id)}
+                    onClick={() => {
+                      confirmSelection(item.id);
+                      setEditingItemId(null);
+                      setLocalSelectedId(prev => {
+                        const newState = { ...prev };
+                        delete newState[item.id];
+                        return newState;
+                      });
+                    }}
                     style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}
                   >
                     {hasSelection ? 'Save & Confirm' : 'Confirm Selection'}
                   </button>
                 )}
 
-                {isConfirmed && isAdmin && !showEditMode && (
+                {isConfirmed && isAdmin && !isEditingThis && (
                   <button 
-                    onClick={() => onSelectOption(item.id, null)}
+                    onClick={() => setEditingItemId(item.id)}
                     style={{ padding: '8px 20px', background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   >
                     <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock for Editing
+                  </button>
+                )}
+
+                {isEditingThis && (
+                  <button 
+                    onClick={() => {
+                      confirmSelection(item.id);
+                      setEditingItemId(null);
+                    }}
+                    style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}
+                  >
+                    Save & Confirm
                   </button>
                 )}
               </div>

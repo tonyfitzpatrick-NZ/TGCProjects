@@ -16,7 +16,6 @@ export default function ScheduleSection({
   isAdmin 
 }) {
   const [open, setOpen] = useState(true);
-  const [editingItemId, setEditingItemId] = useState(null);
 
   return (
     <div style={{ marginBottom: '28px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
@@ -49,7 +48,9 @@ export default function ScheduleSection({
             const currentOption = options.find(o => o.id === selectedId);
             const hasSelection = !!selectedId;
             const isConfirmed = selection.status === 'confirmed';
-            const isEditing = editingItemId === item.id;
+
+            // Show editing controls for anything that is NOT yet confirmed
+            const showEditControls = !isConfirmed;
 
             return (
               <div key={item.id} style={{ 
@@ -64,8 +65,8 @@ export default function ScheduleSection({
                   {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
-                {/* VIEW MODE */}
-                {!isEditing && currentOption && (
+                {/* VIEW MODE - Only for confirmed items */}
+                {!showEditControls && currentOption && (
                   <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '18px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>
                       {currentOption.label}
@@ -78,7 +79,7 @@ export default function ScheduleSection({
                       </div>
                     )}
 
-                    {/* Links */}
+                    {/* Link Icons */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {currentOption.product_link && (
                         <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer"
@@ -108,8 +109,8 @@ export default function ScheduleSection({
                   </div>
                 )}
 
-                {/* EDIT MODE */}
-                {isEditing && (
+                {/* EDIT MODE - For anything not yet confirmed */}
+                {showEditControls && (
                   <>
                     <select
                       value={selectedId || ''}
@@ -139,37 +140,22 @@ export default function ScheduleSection({
                   </>
                 )}
 
-                {/* Buttons */}
+                {/* Action Buttons */}
                 {!isConfirmed && (
                   <button 
-                    onClick={() => {
-                      confirmSelection(item.id);
-                      setEditingItemId(null);
-                    }}
+                    onClick={() => confirmSelection(item.id)}
                     style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}
                   >
                     {hasSelection ? 'Save & Confirm' : 'Confirm Selection'}
                   </button>
                 )}
 
-                {isConfirmed && isAdmin && !isEditing && (
+                {isConfirmed && isAdmin && (
                   <button 
-                    onClick={() => setEditingItemId(item.id)}
+                    onClick={() => onSelectOption(item.id, null)}
                     style={{ padding: '8px 20px', background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   >
                     <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock for Editing
-                  </button>
-                )}
-
-                {isEditing && (
-                  <button 
-                    onClick={() => {
-                      confirmSelection(item.id);
-                      setEditingItemId(null);
-                    }}
-                    style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}
-                  >
-                    Save & Confirm
                   </button>
                 )}
               </div>

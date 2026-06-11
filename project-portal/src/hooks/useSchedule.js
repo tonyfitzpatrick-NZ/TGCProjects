@@ -13,7 +13,6 @@ export function useSchedule(projectId) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!projectId) {
@@ -24,20 +23,20 @@ export function useSchedule(projectId) {
     setError(null);
 
     try {
-      // Main project schedule data
+      // Get full project schedule with options
       const { data: projectData } = await supabase
         .from('v_sched_project')
         .select('*')
         .eq('project_id', projectId)
         .order('section_order, item_order');
 
+      // Group into sections → items → options
       const grouped = (projectData || []).reduce((acc, row) => {
         let section = acc.find(s => s.name === row.section);
         if (!section) {
           section = { 
             id: row.section, 
             name: row.section, 
-            sort_order: row.section_order || 0, 
             items: [] 
           };
           acc.push(section);
@@ -54,25 +53,39 @@ export function useSchedule(projectId) {
           section.items.push(item);
         }
 
+        // Add option if present
+        if (row.option_id) {
+          const existingOption = item.options.find(o => o.id === row.option_id);
+          if (!existingOption) {
+            item.options.push({
+              id: row.option_id,
+              label: row.selected_option || row.option_label,
+              detail: row.detail,
+              warranty: row.warranty,
+              supplier: row.supplier,
+              model_ref: row.model_ref
+            });
+          }
+        }
+
         return acc;
       }, []);
 
       setItemsBySection(grouped);
 
-      // Selections
-      const { data: selsData } = await supabase
+      // Load project selections
+      const { data: sels } = await supabase
         .from('sched_project_selections')
         .select('*')
         .eq('project_id', projectId);
-
-      setSelections(Object.fromEntries((selsData || []).map(s => [s.item_id, s])));
+      
+      setSelections(Object.fromEntries((sels || []).map(s => [s.item_id, s])));
 
       // Templates
       const { data: tmpls } = await supabase
         .from('sched_templates')
         .select('*')
         .eq('is_active', true);
-
       setTemplates(tmpls || []);
 
     } catch (e) {
@@ -83,11 +96,8 @@ export function useSchedule(projectId) {
     }
   }, [projectId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  // Safe stats calculation
   const stats = {
     total: itemsBySection.reduce((sum, s) => sum + (s.items?.length || 0), 0),
     confirmed: 0,
@@ -96,23 +106,6 @@ export function useSchedule(projectId) {
     pct: 0
   };
 
-  // Update stats based on selections (if data exists)
-  if (itemsBySection.length > 0) {
-    let confirmed = 0, specified = 0, tbc = 0;
-    itemsBySection.forEach(section => {
-      (section.items || []).forEach(item => {
-        const sel = selections[item.id];
-        if (sel?.status === 'confirmed') confirmed++;
-        else if (sel?.status === 'specified' || sel?.status === 'substituted') specified++;
-        else tbc++;
-      });
-    });
-    stats.confirmed = confirmed;
-    stats.specified = specified;
-    stats.tbc = tbc;
-    stats.pct = stats.total > 0 ? Math.round((confirmed / stats.total) * 100) : 0;
-  }
-
   return {
     itemsBySection,
     selections,
@@ -120,7 +113,6 @@ export function useSchedule(projectId) {
     stats,
     loading,
     error,
-    saving,
     reload: load,
   };
 }

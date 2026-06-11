@@ -4,7 +4,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { Edit3, ExternalLink, Award, Shield, BookOpen } from 'lucide-react';
+import { Edit3, ExternalLink, Award, Shield } from 'lucide-react';
 
 export default function ScheduleSection({ 
   section, 
@@ -45,9 +45,12 @@ export default function ScheduleSection({
             const selection = selections[item.id] || {};
             const selectedId = selection.option_id;
             const options = item.options || [];
-            const currentOption = options.find(o => o.id === selectedId) || options.find(o => o.is_default);
+            const currentOption = options.find(o => o.id === selectedId);
+            const hasSelection = !!selectedId;
             const isConfirmed = selection.status === 'confirmed';
-            const isEditing = isAdmin && (!isConfirmed || selection.status === 'editing');
+
+            // Edit mode only when admin unlocks it
+            const showEditControls = isAdmin && (!isConfirmed || !hasSelection);
 
             return (
               <div key={item.id} style={{ 
@@ -62,14 +65,9 @@ export default function ScheduleSection({
                   {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
-                {/* VIEW MODE - Clean & tidy */}
-                {!isEditing && currentOption && (
-                  <div style={{ 
-                    background: '#f8fafc', 
-                    borderRadius: '10px', 
-                    padding: '18px', 
-                    marginBottom: '16px' 
-                  }}>
+                {/* VIEW MODE - Clean */}
+                {!showEditControls && currentOption && (
+                  <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '18px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>
                       {currentOption.label}
                     </div>
@@ -81,7 +79,7 @@ export default function ScheduleSection({
                       </div>
                     )}
 
-                    {/* Link Icons */}
+                    {/* Links */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {currentOption.product_link && (
                         <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer"
@@ -103,7 +101,6 @@ export default function ScheduleSection({
                       )}
                     </div>
 
-                    {/* Note shown in view mode (if exists) */}
                     {selection.project_note && (
                       <div style={{ marginTop: '14px', fontSize: '14px', color: '#475569' }}>
                         <strong>Note:</strong> {selection.project_note}
@@ -113,7 +110,7 @@ export default function ScheduleSection({
                 )}
 
                 {/* EDIT MODE */}
-                {isEditing && (
+                {showEditControls && (
                   <>
                     <select
                       value={selectedId || ''}
@@ -133,7 +130,6 @@ export default function ScheduleSection({
                       </div>
                     )}
 
-                    {/* Note input only in edit mode */}
                     <input
                       type="text"
                       placeholder="Project-specific note (optional)"
@@ -144,22 +140,22 @@ export default function ScheduleSection({
                   </>
                 )}
 
-                {/* Action buttons */}
-                {!isConfirmed && !isEditing && (
-                  <button onClick={() => confirmSelection(item.id)} style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}>
-                    Confirm Selection
+                {/* Buttons */}
+                {!isConfirmed && (
+                  <button 
+                    onClick={() => confirmSelection(item.id)}
+                    style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}
+                  >
+                    {hasSelection ? 'Save & Confirm' : 'Confirm Selection'}
                   </button>
                 )}
 
-                {isConfirmed && isAdmin && !isEditing && (
-                  <button onClick={() => onSelectOption(item.id, null)} style={{ padding: '8px 20px', background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                {isConfirmed && isAdmin && !showEditControls && (
+                  <button 
+                    onClick={() => onSelectOption(item.id, null)}
+                    style={{ padding: '8px 20px', background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  >
                     <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock for Editing
-                  </button>
-                )}
-
-                {isEditing && (
-                  <button onClick={() => confirmSelection(item.id)} style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}>
-                    Save & Confirm
                   </button>
                 )}
               </div>

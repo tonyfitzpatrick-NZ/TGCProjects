@@ -4,7 +4,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { Edit3, ExternalLink, Award, Shield, BookOpen, CheckCircle } from 'lucide-react';
+import { Edit3, ExternalLink, Award, Shield, BookOpen } from 'lucide-react';
 
 export default function ScheduleSection({ 
   section, 
@@ -47,7 +47,7 @@ export default function ScheduleSection({
             const options = item.options || [];
             const currentOption = options.find(o => o.id === selectedId) || options.find(o => o.is_default);
             const isConfirmed = selection.status === 'confirmed';
-            const isEditing = isAdmin && (!isConfirmed || selection.status === 'editing'); // simple edit state
+            const isEditing = isAdmin && (!isConfirmed || selection.status === 'editing');
 
             return (
               <div key={item.id} style={{ 
@@ -62,7 +62,7 @@ export default function ScheduleSection({
                   {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
-                {/* VIEW MODE - Clean display */}
+                {/* VIEW MODE - Clean & tidy */}
                 {!isEditing && currentOption && (
                   <div style={{ 
                     background: '#f8fafc', 
@@ -102,10 +102,17 @@ export default function ScheduleSection({
                         </a>
                       )}
                     </div>
+
+                    {/* Note shown in view mode (if exists) */}
+                    {selection.project_note && (
+                      <div style={{ marginTop: '14px', fontSize: '14px', color: '#475569' }}>
+                        <strong>Note:</strong> {selection.project_note}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* EDIT MODE - Show dropdown + form */}
+                {/* EDIT MODE */}
                 {isEditing && (
                   <>
                     <select
@@ -125,17 +132,17 @@ export default function ScheduleSection({
                         {currentOption.detail && <div style={{ fontSize: '14px' }}>{currentOption.detail}</div>}
                       </div>
                     )}
+
+                    {/* Note input only in edit mode */}
+                    <input
+                      type="text"
+                      placeholder="Project-specific note (optional)"
+                      value={selection.project_note || ''}
+                      onChange={(e) => onUpdateNote(item.id, e.target.value)}
+                      style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '12px' }}
+                    />
                   </>
                 )}
-
-                {/* Note field */}
-                <input
-                  type="text"
-                  placeholder="Project-specific note (optional)"
-                  value={selection.project_note || ''}
-                  onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '12px' }}
-                />
 
                 {/* Action buttons */}
                 {!isConfirmed && !isEditing && (

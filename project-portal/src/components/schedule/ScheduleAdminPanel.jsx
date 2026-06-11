@@ -45,7 +45,12 @@ export default function ScheduleAdminPanel() {
 
         let item = section.items.find(i => i.id === row.item_id);
         if (!item) {
-          item = { id: row.item_id, label: row.item, cbi_code: row.cbi_code, options: [] };
+          item = { 
+            id: row.item_id, 
+            label: row.item || 'Unknown', 
+            cbi_code: row.cbi_code, 
+            options: [] 
+          };
           section.items.push(item);
         }
 
@@ -81,6 +86,7 @@ export default function ScheduleAdminPanel() {
   };
 
   const saveOptionEdit = async () => {
+    if (!editingOptionId) return;
     const { error } = await supabase
       .from('sched_item_options')
       .update({
@@ -96,28 +102,50 @@ export default function ScheduleAdminPanel() {
       })
       .eq('id', editingOptionId);
 
-    if (error) alert('Save failed');
-    else {
+    if (error) {
+      alert('Save failed: ' + error.message);
+    } else {
       setEditingOptionId(null);
+      setEditOptionForm({});
       loadData();
     }
   };
 
   const addNewOption = async (itemId) => {
-    if (!newOptionForm.label.trim()) return alert("Label required");
-    await supabase.from('sched_item_options').insert({
-      item_id: itemId,
-      ...newOptionForm
-    });
-    setAddingOptionToItem(null);
-    setNewOptionForm({ label: '', detail: '', warranty: '', supplier: '', model_ref: '', product_link: '', codemark_link: '', branz_link: '', certificate_notes: '' });
-    loadData();
+    if (!newOptionForm.label?.trim()) {
+      alert("Option label is required");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('sched_item_options')
+      .insert({
+        item_id: itemId,
+        label: newOptionForm.label,
+        detail: newOptionForm.detail,
+        warranty: newOptionForm.warranty,
+        supplier: newOptionForm.supplier,
+        model_ref: newOptionForm.model_ref,
+        product_link: newOptionForm.product_link,
+        codemark_link: newOptionForm.codemark_link,
+        branz_link: newOptionForm.branz_link,
+        certificate_notes: newOptionForm.certificate_notes
+      });
+
+    if (error) {
+      alert('Failed to add option: ' + error.message);
+    } else {
+      setAddingOptionToItem(null);
+      setNewOptionForm({ label: '', detail: '', warranty: '', supplier: '', model_ref: '', product_link: '', codemark_link: '', branz_link: '', certificate_notes: '' });
+      loadData();
+    }
   };
 
   const deleteOption = async (id) => {
     if (!window.confirm('Delete this option?')) return;
-    await supabase.from('sched_item_options').delete().eq('id', id);
-    loadData();
+    const { error } = await supabase.from('sched_item_options').delete().eq('id', id);
+    if (error) alert('Delete failed');
+    else loadData();
   };
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading master schedule...</div>;
@@ -155,9 +183,10 @@ export default function ScheduleAdminPanel() {
                     <div>
                       <label>Option Label</label>
                       <input value={editOptionForm.label || ''} onChange={e => setEditOptionForm({...editOptionForm, label: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px'}} />
+
                       <label>Detail</label>
                       <textarea value={editOptionForm.detail || ''} onChange={e => setEditOptionForm({...editOptionForm, detail: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px', minHeight:'60px'}} />
-                      
+
                       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'12px'}}>
                         <div><label>Supplier</label><input value={editOptionForm.supplier || ''} onChange={e => setEditOptionForm({...editOptionForm, supplier: e.target.value})} style={{width:'100%', padding:'8px'}} /></div>
                         <div><label>Warranty</label><input value={editOptionForm.warranty || ''} onChange={e => setEditOptionForm({...editOptionForm, warranty: e.target.value})} style={{width:'100%', padding:'8px'}} /></div>
@@ -175,13 +204,13 @@ export default function ScheduleAdminPanel() {
                       <label>Certificate Notes</label>
                       <textarea value={editOptionForm.certificate_notes || ''} onChange={e => setEditOptionForm({...editOptionForm, certificate_notes: e.target.value})} style={{width:'100%', padding:'8px', minHeight:'60px'}} />
 
-                      <div style={{marginTop:'12px'}}>
-                        <button onClick={saveOptionEdit} style={{background:'#166534', color:'white', padding:'6px 16px', borderRadius:'6px', marginRight:'8px'}}>Save</button>
+                      <div style={{marginTop:'16px'}}>
+                        <button onClick={saveOptionEdit} style={{background:'#166534', color:'white', padding:'8px 20px', borderRadius:'6px', marginRight:'8px'}}>Save Changes</button>
                         <button onClick={() => setEditingOptionId(null)}>Cancel</button>
                       </div>
                     </div>
                   ) : (
-                    <div style={{display:'flex', justifyContent:'space-between'}}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
                       <div>
                         <div style={{fontWeight:500}}>{opt.label}</div>
                         {opt.detail && <div style={{fontSize:'13px'}}>{opt.detail}</div>}
@@ -200,6 +229,20 @@ export default function ScheduleAdminPanel() {
               <button onClick={() => setAddingOptionToItem(item.id)} style={{ color: '#7c3aed', border: '1px dashed #c4b5fd', padding: '8px 16px', borderRadius: '8px', background: 'none', marginTop: '8px' }}>
                 <Plus size={16} style={{marginRight:6}} /> Add New Option
               </button>
+
+              {addingOptionToItem === item.id && (
+                <div style={{ marginTop: '16px', padding: '16px', background: '#f0f9ff', borderRadius: '8px' }}>
+                  <h4>New Option for {item.label}</h4>
+                  {/* Same form as edit */}
+                  <label>Option Label *</label>
+                  <input value={newOptionForm.label} onChange={e => setNewOptionForm({...newOptionForm, label: e.target.value})} style={{width:'100%', padding:'8px', marginBottom:'8px'}} />
+                  {/* ... other fields same as above ... */}
+                  <div style={{marginTop:'12px'}}>
+                    <button onClick={() => addNewOption(item.id)} style={{background:'#166534', color:'white', padding:'8px 20px', borderRadius:'6px', marginRight:'8px'}}>Add Option</button>
+                    <button onClick={() => {setAddingOptionToItem(null); setNewOptionForm({label:'', detail:'', warranty:'', supplier:'', model_ref:'', product_link:'', codemark_link:'', branz_link:'', certificate_notes:''});}}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -9,7 +9,7 @@
 // ============================================================
 
 import React, { useState, useMemo } from 'react'
-import { Search, Loader, CheckCircle } from 'lucide-react'
+import { Search, Loader } from 'lucide-react'
 import { useSchedule } from '../../hooks/useSchedule'
 import ScheduleSection from './ScheduleSection'
 
@@ -21,6 +21,7 @@ export default function ScheduleTab({ projectId, userRole }) {
     error,
     selectOption,
     updateNote,
+    confirmSelection,
   } = useSchedule(projectId)
 
   const [search, setSearch] = useState('')
@@ -58,16 +59,16 @@ export default function ScheduleTab({ projectId, userRole }) {
 
   return (
     <div style={{ padding: '20px' }}>
-      {/* Search */}
-      <div style={{ marginBottom: '20px' }}>
+      {/* Search Bar */}
+      <div style={{ marginBottom: '24px' }}>
         <input
           type="text"
-          placeholder="Search items, products, suppliers..."
+          placeholder="Search items, products, suppliers, model numbers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
             width: '100%',
-            maxWidth: '500px',
+            maxWidth: '600px',
             padding: '12px 16px',
             borderRadius: '8px',
             border: '1px solid #ddd',
@@ -78,8 +79,8 @@ export default function ScheduleTab({ projectId, userRole }) {
 
       {/* Sections */}
       {filteredSections.length === 0 ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: '#888' }}>
-          No items found
+        <div style={{ padding: '80px', textAlign: 'center', color: '#888', fontSize: '17px' }}>
+          No items match your search
         </div>
       ) : (
         filteredSections.map((section, idx) => (
@@ -90,6 +91,7 @@ export default function ScheduleTab({ projectId, userRole }) {
             selections={selections}
             onSelectOption={selectOption}
             onUpdateNote={updateNote}
+            confirmSelection={confirmSelection}
             isAdmin={isAdmin}
             defaultOpen={idx === 0}
           />

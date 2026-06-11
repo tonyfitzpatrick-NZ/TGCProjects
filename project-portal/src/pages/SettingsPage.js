@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Check, Settings, Calendar, Users, FileText } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Check, Settings, Calendar } from 'lucide-react';
 
 export default function SettingsPage() {
   const { profile } = useAuth();
@@ -12,24 +11,29 @@ export default function SettingsPage() {
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [company, setCompany] = useState(profile?.company || '');
   const [initials, setInitials] = useState(profile?.avatar_initials || '');
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
-  const [pwSaved, setPwSaved] = useState(false);
   const [profileError, setProfileError] = useState('');
-  const [pwError, setPwError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'schedule-admin'
+  const [activeTab, setActiveTab] = useState('profile');
 
   async function saveProfile(e) {
-    // ... (your existing saveProfile function - unchanged)
     e.preventDefault();
-    // [Keep your existing saveProfile code here]
-  }
+    setLoading(true); 
+    setProfileError(''); 
+    setProfileSaved(false);
 
-  async function changePassword(e) {
-    // ... (your existing changePassword function - unchanged)
+    const { error } = await supabase.from('profiles').update({
+      full_name: fullName, 
+      company, 
+      avatar_initials: initials || fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    }).eq('id', profile.id);
+
+    if (error) setProfileError(error.message);
+    else setProfileSaved(true);
+
+    setLoading(false);
+    setTimeout(() => setProfileSaved(false), 3000);
   }
 
   return (
@@ -57,51 +61,45 @@ export default function SettingsPage() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-        {/* Personal Profile Tab */}
+        {/* Profile Tab */}
         {activeTab === 'profile' && (
           <div style={{ maxWidth: '520px' }}>
-            {/* Your existing Profile + Password cards here - unchanged */}
-            {/* ... paste your existing profile and password cards ... */}
+            <div style={S.card}>
+              <div style={S.cardTitle}>Your profile</div>
+              <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <Field label="Full name">
+                  <input style={S.input} value={fullName} onChange={e => setFullName(e.target.value)} />
+                </Field>
+                <Field label="Company / organisation">
+                  <input style={S.input} value={company} onChange={e => setCompany(e.target.value)} placeholder="e.g. Morrison & Partners" />
+                </Field>
+                <Field label="Avatar initials (2 letters)">
+                  <input style={{ ...S.input, width: '80px' }} value={initials} onChange={e => setInitials(e.target.value.slice(0, 2).toUpperCase())} placeholder="TF" maxLength={2} />
+                </Field>
+                <Field label="Role">
+                  <div style={{ ...S.input, background: '#F5F5F5', color: '#888', textTransform: 'capitalize' }}>
+                    {profile?.role?.replace('_', ' ')}
+                  </div>
+                </Field>
+
+                {profileError && <div style={S.error}>{profileError}</div>}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button type="submit" style={S.btnPrimary} disabled={loading}>
+                    {loading ? 'Saving…' : 'Save profile'}
+                  </button>
+                  {profileSaved && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#0F6E56', fontSize: '13px' }}>
+                      <Check size={14} /> Saved
+                    </div>
+                  )}
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
         {/* Schedule Admin Tab */}
         {activeTab === 'schedule-admin' && isAdmin && (
           <div>
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '24px', marginBottom: '8px' }}>Schedule of Finishes — Master Admin</h2>
-              <p style={{ color: '#64748b' }}>
-                Manage templates, sections, items, options, CBI classifications, and reference documents.
-              </p>
-            </div>
-
-            <button
-              onClick={() => navigate('/admin/schedule')}
-              style={{
-                padding: '14px 24px',
-                background: '#1B2B4B',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}
-            >
-              Open Full Schedule Admin Panel →
-            </button>
-
-            <p style={{ marginTop: '16px', fontSize: '13px', color: '#888' }}>
-              This will open the dedicated admin area where you can add/edit/delete elements, manage templates, and use AI research tools.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Keep your existing Field, S styles, and helper functions at the bottom
+            <h2 style={{ fontSize: '24px', marginBottom: '16px

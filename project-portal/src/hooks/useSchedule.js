@@ -23,22 +23,16 @@ export function useSchedule(projectId) {
     setError(null);
 
     try {
-      // Get full project schedule with options
       const { data: projectData } = await supabase
         .from('v_sched_project')
         .select('*')
         .eq('project_id', projectId)
         .order('section_order, item_order');
 
-      // Group into sections → items → options
       const grouped = (projectData || []).reduce((acc, row) => {
         let section = acc.find(s => s.name === row.section);
         if (!section) {
-          section = { 
-            id: row.section, 
-            name: row.section, 
-            items: [] 
-          };
+          section = { id: row.section, name: row.section, items: [] };
           acc.push(section);
         }
 
@@ -53,10 +47,9 @@ export function useSchedule(projectId) {
           section.items.push(item);
         }
 
-        // Add option if present
         if (row.option_id) {
-          const existingOption = item.options.find(o => o.id === row.option_id);
-          if (!existingOption) {
+          const exists = item.options.some(o => o.id === row.option_id);
+          if (!exists) {
             item.options.push({
               id: row.option_id,
               label: row.selected_option || row.option_label,
@@ -67,13 +60,11 @@ export function useSchedule(projectId) {
             });
           }
         }
-
         return acc;
       }, []);
 
       setItemsBySection(grouped);
 
-      // Load project selections
       const { data: sels } = await supabase
         .from('sched_project_selections')
         .select('*')
@@ -81,15 +72,11 @@ export function useSchedule(projectId) {
       
       setSelections(Object.fromEntries((sels || []).map(s => [s.item_id, s])));
 
-      // Templates
-      const { data: tmpls } = await supabase
-        .from('sched_templates')
-        .select('*')
-        .eq('is_active', true);
+      const { data: tmpls } = await supabase.from('sched_templates').select('*');
       setTemplates(tmpls || []);
 
     } catch (e) {
-      console.error('Schedule load error:', e);
+      console.error(e);
       setError(e.message);
     } finally {
       setLoading(false);
@@ -97,6 +84,53 @@ export function useSchedule(projectId) {
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
+
+  const selectOption = useCallback(async (itemId, optionId) => {
+    try {
+      const { data, error } = await supabase
+        .from('sched_project_selections')
+        .upsert({
+          project_id: projectId,
+          item_id: itemId,
+          option_id: optionId || null,
+          status: optionId ? 'specified' : 'tbc',
+        }, { onConflict: 'project_id,item_id' })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSelections(prev => ({
+        ...prev,
+        [itemId]: data
+      }));
+    } catch (e) {
+      console.error(e);
+      alert('Failed to save selection');
+    }
+  }, [projectId]);
+
+  const updateNote = useCallback(async (itemId, note) => {
+    const existing = selections[itemId];
+    try {
+      const { data, error } = await supabase
+        .from('sched_project_selections')
+        .upsert({
+          project_id: projectId,
+          item_id: itemId,
+          option_id: existing?.option_id || null,
+          status: existing?.status || 'specified',
+          project_note: note,
+        }, { onConflict: 'project_id,item_id' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setSelections(prev => ({ ...prev, [itemId]: data }));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [projectId, selections]);
 
   const stats = {
     total: itemsBySection.reduce((sum, s) => sum + (s.items?.length || 0), 0),
@@ -113,6 +147,8 @@ export function useSchedule(projectId) {
     stats,
     loading,
     error,
+    selectOption,
+    updateNote,
     reload: load,
   };
 }

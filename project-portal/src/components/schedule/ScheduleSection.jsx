@@ -49,7 +49,6 @@ export default function ScheduleSection({
             const hasSelection = !!selectedId;
             const isConfirmed = selection.status === 'confirmed';
 
-            // Show editing controls for anything that is NOT yet confirmed
             const showEditControls = !isConfirmed;
 
             return (
@@ -58,14 +57,40 @@ export default function ScheduleSection({
                 borderRadius: '12px', 
                 padding: '20px', 
                 marginBottom: '20px',
-                background: '#fff'
+                background: '#fff',
+                position: 'relative'
               }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <strong style={{ fontSize: '17px' }}>{item.label}</strong>
-                  {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
+                {/* Heading + small edit icon in top right */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-start',
+                  marginBottom: '12px'
+                }}>
+                  <div>
+                    <strong style={{ fontSize: '17px' }}>{item.label}</strong>
+                    {item.cbi_code && <div style={{ fontSize: '13px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
+                  </div>
+
+                  {/* Small edit icon - only for confirmed items (admin) */}
+                  {isConfirmed && isAdmin && !showEditControls && (
+                    <button 
+                      onClick={() => onSelectOption(item.id, null)}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        padding: '4px', 
+                        cursor: 'pointer',
+                        color: '#64748b'
+                      }}
+                      title="Unlock for Editing"
+                    >
+                      <Edit3 size={18} />
+                    </button>
+                  )}
                 </div>
 
-                {/* VIEW MODE - Only for confirmed items */}
+                {/* VIEW MODE */}
                 {!showEditControls && currentOption && (
                   <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '18px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>
@@ -109,7 +134,7 @@ export default function ScheduleSection({
                   </div>
                 )}
 
-                {/* EDIT MODE - For anything not yet confirmed */}
+                {/* EDIT MODE */}
                 {showEditControls && (
                   <>
                     <select
@@ -147,15 +172,6 @@ export default function ScheduleSection({
                     style={{ padding: '10px 24px', background: '#166534', color: '#fff', border: 'none', borderRadius: '8px' }}
                   >
                     {hasSelection ? 'Save & Confirm' : 'Confirm Selection'}
-                  </button>
-                )}
-
-                {isConfirmed && isAdmin && (
-                  <button 
-                    onClick={() => onSelectOption(item.id, null)}
-                    style={{ padding: '8px 20px', background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                  >
-                    <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock for Editing
                   </button>
                 )}
               </div>

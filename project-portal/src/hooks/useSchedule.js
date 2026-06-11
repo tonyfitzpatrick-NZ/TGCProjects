@@ -24,7 +24,6 @@ export function useSchedule(projectId) {
     setError(null);
 
     try {
-      // Load full project schedule with options
       const { data: projectData } = await supabase
         .from('v_sched_project')
         .select('*')
@@ -34,11 +33,7 @@ export function useSchedule(projectId) {
       const grouped = (projectData || []).reduce((acc, row) => {
         let section = acc.find(s => s.name === row.section);
         if (!section) {
-          section = { 
-            id: row.section, 
-            name: row.section, 
-            items: [] 
-          };
+          section = { id: row.section, name: row.section, items: [] };
           acc.push(section);
         }
 
@@ -71,7 +66,6 @@ export function useSchedule(projectId) {
 
       setItemsBySection(grouped);
 
-      // Load project selections
       const { data: sels } = await supabase
         .from('sched_project_selections')
         .select('*')
@@ -79,27 +73,19 @@ export function useSchedule(projectId) {
       
       setSelections(Object.fromEntries((sels || []).map(s => [s.item_id, s])));
 
-      // Load templates
-      const { data: tmpls } = await supabase
-        .from('sched_templates')
-        .select('*')
-        .eq('is_active', true);
-      
+      const { data: tmpls } = await supabase.from('sched_templates').select('*');
       setTemplates(tmpls || []);
 
     } catch (e) {
-      console.error('Schedule load error:', e);
+      console.error(e);
       setError(e.message);
     } finally {
       setLoading(false);
     }
   }, [projectId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  // Select / Change option
   const selectOption = useCallback(async (itemId, optionId) => {
     setSaving(true);
     try {
@@ -115,11 +101,7 @@ export function useSchedule(projectId) {
         .single();
 
       if (error) throw error;
-
-      setSelections(prev => ({
-        ...prev,
-        [itemId]: data
-      }));
+      setSelections(prev => ({ ...prev, [itemId]: data }));
     } catch (e) {
       console.error(e);
       alert('Failed to save selection');
@@ -128,7 +110,6 @@ export function useSchedule(projectId) {
     }
   }, [projectId]);
 
-  // Update note
   const updateNote = useCallback(async (itemId, note) => {
     const existing = selections[itemId];
     setSaving(true);
@@ -140,7 +121,7 @@ export function useSchedule(projectId) {
           item_id: itemId,
           option_id: existing?.option_id || null,
           status: existing?.status || 'specified',
-          project_note: note || null,
+          project_note: note,
         }, { onConflict: 'project_id,item_id' })
         .select()
         .single();
@@ -154,19 +135,24 @@ export function useSchedule(projectId) {
     }
   }, [projectId, selections]);
 
-  // Apply template
   const applyTemplateToProject = useCallback(async (templateId) => {
     setSaving(true);
     try {
       const { error } = await supabase
         .from('projects')
-        .update({ sched_template_id: templateId, sched_stage: 'design' })
+        .update({ 
+          sched_template_id: templateId,
+          sched_stage: 'design' 
+        })
         .eq('id', projectId);
+
       if (error) throw error;
-      await load(); // refresh
+
+      alert('Template applied successfully!');
+      await load(); // refresh data
     } catch (e) {
       console.error(e);
-      alert('Failed to apply template');
+      alert('Failed to apply template: ' + e.message);
     } finally {
       setSaving(false);
     }
@@ -193,4 +179,4 @@ export function useSchedule(projectId) {
     applyTemplateToProject,
     reload: load,
   };
-}
+}}

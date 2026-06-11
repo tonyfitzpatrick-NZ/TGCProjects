@@ -11,8 +11,7 @@ export default function ScheduleSection({
   items = [], 
   selections = {}, 
   onSelectOption, 
-  onUpdateNote, 
-  isAdmin 
+  onUpdateNote 
 }) {
   const [open, setOpen] = useState(true);
 
@@ -46,8 +45,7 @@ export default function ScheduleSection({
             const selection = selections[item.id] || {};
             const selectedOptionId = selection.option_id;
             const options = item.options || [];
-            const currentOption = options.find(o => o.id === selectedOptionId) || 
-                                 options.find(o => o.is_default);
+            const currentOption = options.find(o => o.id === selectedOptionId) || options.find(o => o.is_default);
 
             return (
               <div key={item.id} style={{ 
@@ -57,20 +55,11 @@ export default function ScheduleSection({
                 marginBottom: '16px',
                 background: '#fff'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div>
-                    <strong>{item.label}</strong>
-                    {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
-                  </div>
-                  {currentOption && (
-                    <div style={{ color: '#166534', fontSize: '13px' }}>
-                      <CheckCircle size={16} style={{ display: 'inline', marginRight: 4 }} />
-                      Selected
-                    </div>
-                  )}
+                <div style={{ marginBottom: '12px' }}>
+                  <strong>{item.label}</strong>
+                  {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
-                {/* Dropdown Selection */}
                 <select
                   value={selectedOptionId || ''}
                   onChange={(e) => onSelectOption(item.id, e.target.value || null)}
@@ -80,7 +69,7 @@ export default function ScheduleSection({
                     borderRadius: '8px',
                     border: '1px solid #d1d5db',
                     fontSize: '14px',
-                    background: '#fff'
+                    marginBottom: '12px'
                   }}
                 >
                   <option value="">— Select option —</option>
@@ -91,26 +80,25 @@ export default function ScheduleSection({
                   ))}
                 </select>
 
-                {/* Selected Option Details */}
                 {currentOption && (
-                  <div style={{ marginTop: '12px', fontSize: '13px', color: '#444', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                    <strong>Selected:</strong> {currentOption.label}<br />
-                    {currentOption.detail && <span>{currentOption.detail}</span>}<br />
-                    {currentOption.warranty && <span>Warranty: {currentOption.warranty}</span>}<br />
-                    {currentOption.supplier && <span>Supplier: {currentOption.supplier}</span>}
+                  <div style={{ fontSize: '13px', color: '#166534', background: '#f0fdf4', padding: '10px', borderRadius: '8px' }}>
+                    Selected: {currentOption.label}
                   </div>
                 )}
 
-                {/* Note */}
-                <div style={{ marginTop: '12px' }}>
-                  <input
-                    type="text"
-                    placeholder="Project-specific note (optional)"
-                    value={selection.project_note || ''}
-                    onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd' }}
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder="Project-specific note (optional)"
+                  value={selection.project_note || ''}
+                  onChange={(e) => onUpdateNote(item.id, e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 12px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #ddd',
+                    marginTop: '8px'
+                  }}
+                />
               </div>
             );
           })}

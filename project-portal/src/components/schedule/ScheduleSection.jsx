@@ -4,7 +4,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { Edit3, ExternalLink } from 'lucide-react';
+import { Edit3, ExternalLink, Award, Shield, BookOpen } from 'lucide-react';
 
 export default function ScheduleSection({ 
   section, 
@@ -82,57 +82,52 @@ export default function ScheduleSection({
 
                 {currentOption && (
                   <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr', 
-                    gap: '20px',
                     background: '#f0fdf4', 
                     border: '1px solid #86efac', 
-                    borderRadius: '10px', 
-                    padding: '18px' 
+                    borderRadius: '12px', 
+                    padding: '20px', 
+                    marginBottom: '16px' 
                   }}>
-                    {/* Left Column */}
-                    <div>
-                      <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '10px' }}>
-                        {currentOption.label}
-                      </div>
-                      {currentOption.detail && (
-                        <div style={{ fontSize: '14px', lineHeight: '1.5', marginBottom: '12px' }}>
-                          {currentOption.detail}
-                        </div>
-                      )}
+                    <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '12px' }}>
+                      {currentOption.label}
                     </div>
 
-                    {/* Right Column */}
-                    <div>
-                      {currentOption.supplier && <div style={{ marginBottom: '6px' }}>Supplier: <strong>{currentOption.supplier}</strong></div>}
-                      {currentOption.warranty && <div style={{ marginBottom: '12px' }}>Warranty: <strong>{currentOption.warranty}</strong></div>}
-
-                      {/* Links */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {currentOption.product_link && (
-                          <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
-                            <ExternalLink size={16} /> Product Page
-                          </a>
-                        )}
-                        {currentOption.codemark_link && (
-                          <a href={currentOption.codemark_link} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
-                            <ExternalLink size={16} /> CodeMark Certificate
-                          </a>
-                        )}
-                        {currentOption.branz_link && (
-                          <a href={currentOption.branz_link} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
-                            <ExternalLink size={16} /> BRANZ Appraisal
-                          </a>
-                        )}
+                    {currentOption.detail && (
+                      <div style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '16px', color: '#334155' }}>
+                        {currentOption.detail}
                       </div>
+                    )}
 
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                      {currentOption.supplier && <div style={{ fontSize: '14px' }}>Supplier: <strong>{currentOption.supplier}</strong></div>}
+                      {currentOption.warranty && <div style={{ fontSize: '14px' }}>Warranty: <strong>{currentOption.warranty}</strong></div>}
+                    </div>
+
+                    {/* Link Icons */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>
+                      {currentOption.product_link && (
+                        <a href={currentOption.product_link} target="_blank" rel="noopener noreferrer"
+                           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', color: '#1e40af', textDecoration: 'none' }}>
+                          <ExternalLink size={16} /> Product Page
+                        </a>
+                      )}
+                      {currentOption.branz_link && (
+                        <a href={currentOption.branz_link} target="_blank" rel="noopener noreferrer"
+                           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', color: '#1e40af', textDecoration: 'none' }}>
+                          <Award size={16} /> BRANZ Appraisal
+                        </a>
+                      )}
+                      {currentOption.codemark_link && (
+                        <a href={currentOption.codemark_link} target="_blank" rel="noopener noreferrer"
+                           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', color: '#1e40af', textDecoration: 'none' }}>
+                          <Shield size={16} /> CodeMark Certificate
+                        </a>
+                      )}
                       {currentOption.certificate_notes && (
-                        <div style={{ marginTop: '12px', fontSize: '13px', color: '#444' }}>
-                          {currentOption.certificate_notes}
-                        </div>
+                        <a href={currentOption.certificate_notes} target="_blank" rel="noopener noreferrer"
+                           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', color: '#1e40af', textDecoration: 'none' }}>
+                          <BookOpen size={16} /> Installation Manual
+                        </a>
                       )}
                     </div>
                   </div>
@@ -143,7 +138,7 @@ export default function ScheduleSection({
                   placeholder="Project-specific note (optional)"
                   value={selection.project_note || ''}
                   onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', marginTop: '16px' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db' }}
                 />
 
                 {!isConfirmed && (

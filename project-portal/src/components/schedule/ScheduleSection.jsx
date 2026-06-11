@@ -17,28 +17,59 @@ export default function ScheduleSection({
 }) {
   const [open, setOpen] = useState(true);
 
+  // Special handling for Cladding
+  const isCladdingSection = section.name.toLowerCase().includes('cladding');
+
+  if (isCladdingSection) {
+    // Group all cladding options
+    const claddingOptions = items.flatMap(item => item.options || []);
+    const uniqueCladdingOptions = Array.from(new Map(claddingOptions.map(o => [o.id, o])).values());
+
+    return (
+      <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
+        <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
+          Cladding (Multiple allowed)
+        </button>
+
+        {open && (
+          <div style={{ padding: '20px' }}>
+            {[1, 2, 3].map(num => {
+              const fieldKey = `cladding_${num}`;
+              const selectedId = selections[fieldKey]?.option_id;
+              const current = uniqueCladdingOptions.find(o => o.id === selectedId);
+
+              return (
+                <div key={num} style={{ marginBottom: '20px', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                  <strong>Cladding {num}</strong>
+                  <select
+                    value={selectedId || ''}
+                    onChange={(e) => onSelectOption(fieldKey, e.target.value || null)}
+                    style={{ width: '100%', padding: '10px', marginTop: '8px', borderRadius: '8px' }}
+                  >
+                    <option value="">— Select cladding —</option>
+                    {uniqueCladdingOptions.map(opt => (
+                      <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    ))}
+                  </select>
+                  {current && (
+                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#166534' }}>
+                      Selected: {current.label}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Normal sections
   return (
     <div style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', overflow: 'hidden' }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          padding: '16px 20px',
-          textAlign: 'left',
-          background: '#f8fafc',
-          border: 'none',
-          fontSize: '17px',
-          fontWeight: '600',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer'
-        }}
-      >
+      <button onClick={() => setOpen(!open)} style={{ width: '100%', padding: '16px 20px', textAlign: 'left', background: '#f8fafc', border: 'none', fontSize: '17px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
         {section.name}
-        <span style={{ fontSize: '14px', color: '#64748b' }}>
-          {items.length} items
-        </span>
       </button>
 
       {open && (
@@ -51,104 +82,45 @@ export default function ScheduleSection({
             const isConfirmed = selection.status === 'confirmed';
 
             return (
-              <div key={item.id} style={{ 
-                padding: '16px', 
-                border: '1px solid #f1f5f9', 
-                borderRadius: '10px', 
-                marginBottom: '16px',
-                background: '#fff',
-                opacity: isConfirmed ? 0.95 : 1
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div>
-                    <strong>{item.label}</strong>
-                    {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
-                  </div>
-                  {isConfirmed && (
-                    <div style={{ color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <CheckCircle size={18} /> Confirmed
-                    </div>
-                  )}
+              <div key={item.id} style={{ padding: '16px', border: '1px solid #f1f5f9', borderRadius: '10px', marginBottom: '16px', background: '#fff' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <strong>{item.label}</strong>
+                  {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                 </div>
 
-                {/* Dropdown - Disabled when confirmed */}
                 <select
                   value={selectedOptionId || ''}
                   onChange={(e) => onSelectOption(item.id, e.target.value || null)}
-                  disabled={isConfirmed}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                    fontSize: '14px',
-                    marginBottom: '12px',
-                    background: isConfirmed ? '#f9fafb' : '#fff'
-                  }}
+                  disabled={isConfirmed && !isAdmin}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px' }}
                 >
                   <option value="">— Select option —</option>
                   {options.map(opt => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.label} {opt.supplier ? `(${opt.supplier})` : ''}
-                    </option>
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
                   ))}
                 </select>
 
-                {/* Selected Option Info */}
-                {currentOption && (
-                  <div style={{ fontSize: '13px', color: '#166534', background: '#f0fdf4', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
-                    Selected: {currentOption.label}
-                  </div>
-                )}
+                {currentOption && <div style={{ fontSize: '13px', color: '#166534' }}>Selected: {currentOption.label}</div>}
 
-                {/* Note */}
                 <input
                   type="text"
                   placeholder="Project-specific note (optional)"
                   value={selection.project_note || ''}
                   onChange={(e) => onUpdateNote(item.id, e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', marginTop: '8px' }}
                 />
 
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  {!isConfirmed && (
-                    <button 
-                      onClick={() => confirmSelection(item.id)}
-                      style={{ 
-                        padding: '8px 20px', 
-                        background: '#166534', 
-                        color: '#fff', 
-                        border: 'none', 
-                        borderRadius: '6px', 
-                        fontSize: '13px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Confirm Selection
-                    </button>
-                  )}
+                {!isConfirmed && (
+                  <button onClick={() => confirmSelection(item.id)} style={{ marginTop: '12px', padding: '8px 20px', background: '#166534', color: '#fff', border: 'none', borderRadius: '6px' }}>
+                    Confirm Selection
+                  </button>
+                )}
 
-                  {isConfirmed && isAdmin && (
-                    <button 
-                      onClick={() => onSelectOption(item.id, null)}
-                      style={{ 
-                        padding: '8px 20px', 
-                        background: '#ef4444', 
-                        color: '#fff', 
-                        border: 'none', 
-                        borderRadius: '6px', 
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <Edit3 size={16} /> Unlock & Edit
-                    </button>
-                  )}
-                </div>
+                {isConfirmed && isAdmin && (
+                  <button onClick={() => onSelectOption(item.id, null)} style={{ marginTop: '12px', padding: '8px 20px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}>
+                    <Edit3 size={16} style={{ marginRight: 6 }} /> Unlock & Edit
+                  </button>
+                )}
               </div>
             );
           })}

@@ -4,14 +4,13 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { CheckCircle, AlertCircle, Edit3 } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 export default function ScheduleSection({ 
   section, 
   items = [], 
   selections = {}, 
   onSelectOption, 
-  onUpdateStatus, 
   onUpdateNote, 
   isAdmin 
 }) {
@@ -58,49 +57,55 @@ export default function ScheduleSection({
                 marginBottom: '16px',
                 background: '#fff'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div>
-                    <strong style={{ fontSize: '15px' }}>{item.label}</strong>
+                    <strong>{item.label}</strong>
                     {item.cbi_code && <div style={{ fontSize: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</div>}
                   </div>
                   {currentOption && (
-                    <div style={{ color: '#166534', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle size={16} /> Selected
+                    <div style={{ color: '#166534', fontSize: '13px' }}>
+                      <CheckCircle size={16} style={{ display: 'inline', marginRight: 4 }} />
+                      Selected
                     </div>
                   )}
                 </div>
 
-                {/* Option Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                  {options.map(option => {
-                    const isSelected = option.id === selectedOptionId;
-                    return (
-                      <div
-                        key={option.id}
-                        onClick={() => onSelectOption(item.id, option.id)}
-                        style={{
-                          padding: '14px',
-                          border: isSelected ? '2px solid #1B2B4B' : '1px solid #e2e8f0',
-                          borderRadius: '10px',
-                          background: isSelected ? '#f0f4ff' : '#fff',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <div style={{ fontWeight: '500', marginBottom: '6px' }}>{option.label}</div>
-                        {option.detail && <div style={{ fontSize: '13px', color: '#555', lineHeight: '1.4' }}>{option.detail}</div>}
-                        {option.supplier && <div style={{ fontSize: '12px', marginTop: '6px' }}>Supplier: {option.supplier}</div>}
-                        {option.warranty && <div style={{ fontSize: '12px', color: '#166534' }}>Warranty: {option.warranty}</div>}
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* Dropdown Selection */}
+                <select
+                  value={selectedOptionId || ''}
+                  onChange={(e) => onSelectOption(item.id, e.target.value || null)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    fontSize: '14px',
+                    background: '#fff'
+                  }}
+                >
+                  <option value="">— Select option —</option>
+                  {options.map(opt => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label} {opt.supplier ? `(${opt.supplier})` : ''}
+                    </option>
+                  ))}
+                </select>
 
-                {/* Note field */}
+                {/* Selected Option Details */}
+                {currentOption && (
+                  <div style={{ marginTop: '12px', fontSize: '13px', color: '#444', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                    <strong>Selected:</strong> {currentOption.label}<br />
+                    {currentOption.detail && <span>{currentOption.detail}</span>}<br />
+                    {currentOption.warranty && <span>Warranty: {currentOption.warranty}</span>}<br />
+                    {currentOption.supplier && <span>Supplier: {currentOption.supplier}</span>}
+                  </div>
+                )}
+
+                {/* Note */}
                 <div style={{ marginTop: '12px' }}>
                   <input
                     type="text"
-                    placeholder="Add project-specific note..."
+                    placeholder="Project-specific note (optional)"
                     value={selection.project_note || ''}
                     onChange={(e) => onUpdateNote(item.id, e.target.value)}
                     style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd' }}

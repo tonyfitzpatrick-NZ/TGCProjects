@@ -4,7 +4,6 @@
 // and linking CodeMark / BRANZ / manual documents.
 // Only rendered when userRole === 'admin'
 // ============================================================
-
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Edit2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -110,7 +109,7 @@ export default function ScheduleAdminPanel() {
 
   return (
     <div>
-      {/* ONLY ONE TAB BAR */}
+      {/* ==================== ONLY ONE TAB BAR ==================== */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
         {[
           { key: 'options', label: 'Options & Products' },

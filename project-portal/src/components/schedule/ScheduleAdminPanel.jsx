@@ -295,4 +295,3 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   );
 }
 
-export default ScheduleAdminPanel;

@@ -111,14 +111,14 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {row.product_link && <a href={row.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><ExternalLink size={14} /> Product</a>}
-            {row.branz_link && <a href={row.branz_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><Award size={14} /> BRANZ</a>}
-            {row.codemark_link && <a href={row.codemark_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><Shield size={14} /> CodeMark</a>}
+            {row.product_link && <a href={row.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}>Product Page</a>}
+            {row.branz_link && <a href={row.branz_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}>BRANZ</a>}
+            {row.codemark_link && <a href={row.codemark_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}>CodeMark</a>}
           </div>
         </div>
       ))}
 
-      {/* EDIT MODAL */}
+      {/* EDIT MODAL - All fields */}
       {(editingId || isCreating) && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '560px', maxHeight: '90vh', overflowY: 'auto' }}>

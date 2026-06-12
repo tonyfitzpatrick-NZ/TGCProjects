@@ -33,21 +33,23 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         setData(rows || []);
       }
 
-      const { data: items } = await supabase.from('sched_items').select('id, label, cbi_code').order('sort_order');
+      const { data: items } = await supabase
+        .from('sched_items')
+        .select('id, label, cbi_code')
+        .order('sort_order');
       setItemsList(items || []);
     } catch (e) {
-      console.error('Load data error:', e);
+      console.error('Load error:', e);
     } finally {
       setLoading(false);
     }
   }
 
   async function loadAssignedItems(optionId) {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('sched_item_option_assignments')
       .select('item_id, sched_items(id, label, cbi_code)')
       .eq('option_id', optionId);
-    if (error) console.error('Load assignments error:', error);
     setAssignedItems(data || []);
   }
 
@@ -74,11 +76,8 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   const saveEdit = async () => {
     try {
-      console.log('=== SAVE START ===');
-      console.log('Assigned items:', assignedItems);
-
       const productData = {
-        label: editForm.label.trim(),
+        label: editForm.label,
         detail: editForm.detail || null,
         product_link: editForm.product_link || null,
         branz_link: editForm.branz_link || null,
@@ -89,55 +88,29 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
       let optionId = editingId;
 
       if (isCreating) {
-        const { data: newOpt, error: insertError } = await supabase
-          .from('sched_item_options')
-          .insert(productData)
-          .select()
-          .single();
-        if (insertError) throw insertError;
+        const { data: newOpt } = await supabase.from('sched_item_options').insert(productData).select().single();
         optionId = newOpt.id;
-        console.log('Created new product ID:', optionId);
       } else {
-        const { error: updateError } = await supabase
-          .from('sched_item_options')
-          .update(productData)
-          .eq('id', editingId);
-        if (updateError) throw updateError;
-        console.log('Updated product ID:', editingId);
+        await supabase.from('sched_item_options').update(productData).eq('id', editingId);
       }
 
-      // Handle assignments
       if (optionId) {
-        const { error: deleteError } = await supabase
-          .from('sched_item_option_assignments')
-          .delete()
-          .eq('option_id', optionId);
-        if (deleteError) console.error('Delete assignments error:', deleteError);
-
+        await supabase.from('sched_item_option_assignments').delete().eq('option_id', optionId);
         if (assignedItems.length > 0) {
           const assignments = assignedItems.map(a => ({
             item_id: a.item_id,
             option_id: optionId
           }));
-
-          const { error: assignError } = await supabase
-            .from('sched_item_option_assignments')
-            .insert(assignments);
-
-          if (assignError) {
-            console.error('Assignment insert failed:', assignError);
-          } else {
-            console.log('✅ Assignments saved successfully');
-          }
+          await supabase.from('sched_item_option_assignments').insert(assignments);
         }
       }
 
       setEditingId(null);
       setIsCreating(false);
       setAssignedItems([]);
-      loadData(); // Refresh list
+      loadData();
     } catch (e) {
-      console.error('Save failed:', e);
+      console.error(e);
       alert('Save failed: ' + e.message);
     }
   };
@@ -161,6 +134,10 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   };
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
+
+  if (activeTab !== 'options') {
+    return <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>Coming soon: {activeTab} tab</div>;
+  }
 
   return (
     <div>
@@ -197,20 +174,18 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
       {/* EDIT MODAL */}
       {(editingId || isCreating) && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h3>{isCreating ? 'Add New Product' : 'Edit Product'}</h3>
               <button onClick={cancelEdit}><X size={22} /></button>
             </div>
 
-            {/* Name */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
               <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
             </div>
 
-            {/* Assigned Items */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Assigned to Items</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
@@ -229,13 +204,11 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </select>
             </div>
 
-            {/* Other fields */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description / Details</label>
               <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '90px' }} />
             </div>
 
-            {/* Link fields (shortened for space) */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Product Page / Website Link</label>
               <input value={editForm.product_link || ''} onChange={e => setEditForm({ ...editForm, product_link: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />

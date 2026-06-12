@@ -1,9 +1,3 @@
-// ============================================================
-// ScheduleAdminPanel.jsx
-// Admin-only panel for adding/editing/deleting item options
-// and linking CodeMark / BRANZ / manual documents.
-// Only rendered when userRole === 'admin'
-// ============================================================
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Edit2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';

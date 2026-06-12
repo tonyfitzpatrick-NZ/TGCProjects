@@ -6,7 +6,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, Edit2, Plus } from 'lucide-react';
+import { RefreshCw, Trash2, Edit2, Plus, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ScheduleAdminPanel() {
@@ -14,6 +14,9 @@ export default function ScheduleAdminPanel() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
     loadData();
@@ -33,7 +36,7 @@ export default function ScheduleAdminPanel() {
       if (activeTab === 'items') {
         const { data: rows } = await supabase
           .from('sched_items')
-          .select('*, sched_sections(name), sched_item_options(id, label)')
+          .select('*, sched_sections(name)')
           .order('sort_order');
         setData(rows || []);
       }
@@ -48,11 +51,40 @@ export default function ScheduleAdminPanel() {
     }
   }
 
+  // === PRODUCT EDITING ===
+  const startEditProduct = (product) => {
+    setEditingProduct(product.option_id);
+    setEditForm({
+      label: product.option_label,
+      detail: product.detail,
+      warranty: product.warranty,
+      supplier: product.supplier,
+      product_link: product.product_link,
+      codemark_link: product.codemark_link,
+      branz_link: product.branz_link,
+      certificate_notes: product.certificate_notes
+    });
+  };
+
+  const saveProduct = async () => {
+    const { error } = await supabase
+      .from('sched_item_options')
+      .update(editForm)
+      .eq('id', editingProduct);
+
+    if (error) {
+      alert('Save failed: ' + error.message);
+    } else {
+      setEditingProduct(null);
+      loadData();
+    }
+  };
+
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
   return (
     <div>
-      {/* Single clean tab bar */}
+      {/* SINGLE CLEAN TAB BAR */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
         {[
           { key: 'options', label: 'Options & Products' },
@@ -84,71 +116,119 @@ export default function ScheduleAdminPanel() {
       {activeTab === 'options' && (
         <div>
           {data.map((row, index) => (
-            <div key={index} style={{ padding: '14px 18px', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '10px' }}>
-              <strong>{row.section} → {row.item}</strong><br />
-              <span>{row.option_label}</span>
-              {row.product_link && <div><a href={row.product_link} target="_blank">Product Link</a></div>}
+            <div key={index} style={{ 
+              padding: '16px 20px', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '10px', 
+              marginBottom: '12px',
+              background: '#fff'
+            }}>
+              {/* Product Name as Heading */}
+              <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>
+                {row.option_label}
+              </div>
+
+              {row.detail && <div style={{ fontSize: '14px', marginBottom: '8px' }}>{row.detail}</div>}
+
+              {/* Assignment info at the BOTTOM */}
+              <div style={{ 
+                marginTop: '12px', 
+                paddingTop: '10px', 
+                borderTop: '1px solid #f1f5f9',
+                fontSize: '13px', 
+                color: '#64748b' 
+              }}>
+                {row.section} → {row.item}
+              </div>
+
+              {/* Edit button */}
+              <button 
+                onClick={() => startEditProduct(row)}
+                style={{ 
+                  marginTop: '12px',
+                  padding: '6px 14px', 
+                  fontSize: '13px',
+                  background: '#f8fafc',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                <Edit2 size={14} style={{ marginRight: 6 }} /> Edit Product
+              </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* ELEMENTS (ITEMS) TAB */}
+      {/* Edit Product Modal / Form */}
+      {editingProduct && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.5)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3>Edit Product</h3>
+              <button onClick={() => setEditingProduct(null)}><X size={20} /></button>
+            </div>
+
+            <input value={editForm.label || ''} onChange={e => setEditForm({...editForm, label: e.target.value})} placeholder="Product Name" style={{ width: '100%', marginBottom: '12px' }} />
+            <textarea value={editForm.detail || ''} onChange={e => setEditForm({...editForm, detail: e.target.value})} placeholder="Description" style={{ width: '100%', marginBottom: '12px', minHeight: '80px' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <input value={editForm.supplier || ''} onChange={e => setEditForm({...editForm, supplier: e.target.value})} placeholder="Supplier" />
+              <input value={editForm.warranty || ''} onChange={e => setEditForm({...editForm, warranty: e.target.value})} placeholder="Warranty" />
+            </div>
+
+            <input value={editForm.product_link || ''} onChange={e => setEditForm({...editForm, product_link: e.target.value})} placeholder="Product Link" style={{ width: '100%', marginBottom: '8px' }} />
+            <input value={editForm.codemark_link || ''} onChange={e => setEditForm({...editForm, codemark_link: e.target.value})} placeholder="CodeMark Link" style={{ width: '100%', marginBottom: '8px' }} />
+            <input value={editForm.branz_link || ''} onChange={e => setEditForm({...editForm, branz_link: e.target.value})} placeholder="BRANZ Link" style={{ width: '100%', marginBottom: '8px' }} />
+
+            <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
+              <button onClick={saveProduct} style={{ background: '#166534', color: 'white', padding: '10px 24px', borderRadius: '8px' }}>Save Changes</button>
+              <button onClick={() => setEditingProduct(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ITEMS TAB */}
       {activeTab === 'items' && (
         <div>
-          <p style={{ marginBottom: '16px', color: '#666' }}>
-            Elements = the dropdown choices in a project (e.g. Exterior Doors, Cladding). 
-            You can assign multiple Products to each Element here.
-          </p>
           {data.map(item => (
             <div key={item.id} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div>
-                  <strong>{item.label}</strong> 
+                  <strong>{item.label}</strong>
                   {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
                   <div style={{ fontSize: '13px', color: '#666' }}>{item.sched_sections?.name}</div>
                 </div>
-                <div>
-                  <button><Edit2 size={16} /></button>
-                  <button><Trash2 size={16} /></button>
-                </div>
-              </div>
-
-              {/* Show assigned products */}
-              <div style={{ marginTop: '12px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '6px' }}>Assigned Products:</div>
-                {item.sched_item_options?.length > 0 ? (
-                  item.sched_item_options.map(opt => (
-                    <div key={opt.id} style={{ fontSize: '14px', paddingLeft: '8px' }}>• {opt.label}</div>
-                  ))
-                ) : (
-                  <div style={{ fontSize: '13px', color: '#999' }}>No products assigned yet</div>
-                )}
+                <button onClick={() => alert('Edit item coming in next update')}><Edit2 size={18} /></button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* SECTIONS (CATEGORIES) TAB */}
+      {/* SECTIONS TAB */}
       {activeTab === 'sections' && (
         <div>
-          <p style={{ color: '#666', marginBottom: '16px' }}>
-            Categories group your Elements (e.g. Exterior, Interior, Bathrooms).
-          </p>
           {data.map(sec => (
             <div key={sec.id} style={{ padding: '14px 18px', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
               <strong>{sec.name}</strong>
-              <div>
-                <button><Edit2 size={16} /></button>
-                <button><Trash2 size={16} /></button>
-              </div>
+              <button onClick={() => alert('Edit section coming soon')}><Edit2 size={18} /></button>
             </div>
           ))}
         </div>
       )}
 
-      {activeTab === 'templates' && <p>Templates coming soon...</p>}
+      {activeTab === 'templates' && <p>Templates tab coming soon...</p>}
     </div>
   );
 }

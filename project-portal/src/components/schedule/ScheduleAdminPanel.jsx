@@ -58,7 +58,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     if (type === 'product') {
       setEditForm({ ...item, type: 'product' });
     } else if (type === 'item') {
-      setEditForm({ ...item, type: 'item' });
+      setEditForm({ ...item, type: 'item' }); // includes cbi_code
     } else if (type === 'section') {
       setEditForm({ ...item, type: 'section' });
     }
@@ -69,7 +69,11 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
       if (editForm.type === 'product') {
         await supabase.from('sched_item_options').update(editForm).eq('id', editingId);
       } else if (editForm.type === 'item') {
-        await supabase.from('sched_items').update(editForm).eq('id', editingId);
+        await supabase.from('sched_items').update({
+          label: editForm.label,
+          section_id: editForm.section_id,
+          cbi_code: editForm.cbi_code || null
+        }).eq('id', editingId);
       } else if (editForm.type === 'section') {
         await supabase.from('sched_sections').update(editForm).eq('id', editingId);
       }
@@ -232,7 +236,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </div>
       )}
 
-      {/* EDIT MODAL WITH LABELS */}
+      {/* EDIT MODAL WITH LABELS + CBI CODE */}
       {editingId && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '560px', maxHeight: '85vh', overflowY: 'auto' }}>
@@ -241,11 +245,13 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               <button onClick={cancelEdit} style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer' }}><X size={22} /></button>
             </div>
 
+            {/* Name */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
               <input value={editForm.label || editForm.name || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value, name: e.target.value })} placeholder="Enter name" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
             </div>
 
+            {/* Product fields */}
             {editForm.type === 'product' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
@@ -275,15 +281,29 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </>
             )}
 
+            {/* Item fields - with CBI Code */}
             {editForm.type === 'item' && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Category / Section</label>
-                <select value={editForm.section_id || ''} onChange={e => setEditForm({ ...editForm, section_id: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
-                  {sectionsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Category / Section</label>
+                  <select value={editForm.section_id || ''} onChange={e => setEditForm({ ...editForm, section_id: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                    {sectionsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>CBI Reference Code</label>
+                  <input 
+                    value={editForm.cbi_code || ''} 
+                    onChange={e => setEditForm({ ...editForm, cbi_code: e.target.value })} 
+                    placeholder="e.g. 4221"
+                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} 
+                  />
+                </div>
+              </>
             )}
 
+            {/* Action Buttons */}
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
               <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '12px 28px', borderRadius: '8px', border: 'none', fontWeight: '500' }}>Save Changes</button>
               <button onClick={cancelEdit} style={{ background: '#f3f4f6', color: '#374151', padding: '12px 28px', borderRadius: '8px', border: '1px solid #d1d5db' }}>Cancel</button>
@@ -294,4 +314,3 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     </div>
   );
 }
-

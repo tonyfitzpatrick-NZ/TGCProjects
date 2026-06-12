@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Edit2, X, Trash2, Plus, ExternalLink, Award, Shield } from 'lucide-react';
+import { RefreshCw, Edit2, X, Trash2, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ScheduleAdminPanel({ activeTab = 'options' }) {
@@ -36,7 +36,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         const { data: rows } = await supabase.from('v_sched_master').select('*').order('section_order, item_order');
         setData(rows || []);
       }
-      // ... other tabs
     } catch (e) {
       setError(e.message);
     } finally {
@@ -47,7 +46,10 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   async function loadAssignedItems(optionId) {
     const { data } = await supabase
       .from('sched_item_option_assignments')
-      .select('item_id, sched_items(id, label, cbi_code)')
+      .select(`
+        item_id,
+        sched_items(id, label, cbi_code)
+      `)
       .eq('option_id', optionId);
     setAssignedItems(data || []);
   }
@@ -88,7 +90,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     }
   };
 
-  // Save function (same as previous — unchanged for this fix)
   const saveEdit = async () => {
     try {
       if (editForm.type === 'product') {
@@ -104,21 +105,47 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         let optionId = editingId;
 
         if (isCreating) {
-          const { data: newOption } = await supabase.from('sched_item_options').insert(productData).select().single();
+          const { data: newOption } = await supabase
+            .from('sched_item_options')
+            .insert(productData)
+            .select()
+            .single();
           optionId = newOption.id;
         } else {
           await supabase.from('sched_item_options').update(productData).eq('id', editingId);
         }
 
+        // Save assignments to junction table
         if (optionId) {
           await supabase.from('sched_item_option_assignments').delete().eq('option_id', optionId);
           if (assignedItems.length > 0) {
-            const assignments = assignedItems.map(a => ({ item_id: a.item_id, option_id: optionId }));
+            const assignments = assignedItems.map(a => ({
+              item_id: a.item_id,
+              option_id: optionId
+            }));
             await supabase.from('sched_item_option_assignments').insert(assignments);
           }
         }
+      } 
+      else if (editForm.type === 'item') {
+        const itemData = {
+          label: editForm.label,
+          section_id: editForm.section_id,
+          cbi_code: editForm.cbi_code || null
+        };
+        if (isCreating) {
+          await supabase.from('sched_items').insert(itemData);
+        } else {
+          await supabase.from('sched_items').update(itemData).eq('id', editingId);
+        }
+      } 
+      else if (editForm.type === 'section') {
+        if (isCreating) {
+          await supabase.from('sched_sections').insert({ name: editForm.name });
+        } else {
+          await supabase.from('sched_sections').update({ name: editForm.name }).eq('id', editingId);
+        }
       }
-      // ... item and section save logic (unchanged)
 
       setEditingId(null);
       setIsCreating(false);
@@ -151,7 +178,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   return (
     <div>
-      {/* OPTIONS & PRODUCTS TAB - Richer Cards */}
+      {/* OPTIONS & PRODUCTS TAB - Rich Cards */}
       {activeTab === 'options' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -178,6 +205,13 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>{row.option_label}</div>
               {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
+              {/* Show assigned items */}
+              {row.sched_item_option_assignments && row.sched_item_option_assignments.length > 0 && (
+                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '10px' }}>
+                  Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label).join(', ')}
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {row.product_link && <a href={row.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><ExternalLink size={14} /> Product</a>}
                 {row.branz_link && <a href={row.branz_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><Award size={14} /> BRANZ</a>}
@@ -188,7 +222,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </>
       )}
 
-      {/* EDIT MODAL - Full fields + pre-filled data */}
+      {/* EDIT MODAL */}
       {(editingId || isCreating) && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -209,7 +243,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
                 {assignedItems.map((a, idx) => (
                   <div key={idx} style={{ background: '#f1f5f9', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {a.sched_items?.label}
-                    <button onClick={() => removeItemFromProduct(a.item_id)} style={{ background: 'none', border: 'none', color: '#ef4444' }}>×</button>
+                    <button onClick={() => removeItemFromProduct(a.item_id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
                   </div>
                 ))}
               </div>

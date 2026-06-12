@@ -57,7 +57,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     }
   }
 
-  // Load items assigned to a product via junction table
   async function loadAssignedItems(optionId) {
     const { data } = await supabase
       .from('sched_item_option_assignments')
@@ -66,7 +65,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     setAssignedItems(data || []);
   }
 
-  // ==================== OPEN MODALS ====================
   const openAddModal = (type) => {
     setIsCreating(true);
     setEditingId(null);
@@ -103,7 +101,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     }
   };
 
-  // ==================== SAVE ====================
   const saveEdit = async () => {
     try {
       if (editForm.type === 'product') {
@@ -129,10 +126,9 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           await supabase.from('sched_item_options').update(productData).eq('id', editingId);
         }
 
-        // Save multiple item assignments via junction table
+        // Save multiple assignments
         if (optionId) {
           await supabase.from('sched_item_option_assignments').delete().eq('option_id', optionId);
-
           if (assignedItems.length > 0) {
             const assignments = assignedItems.map(a => ({
               item_id: a.item_id,
@@ -178,7 +174,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     setEditForm({});
   };
 
-  // Add / Remove item from product
   const addItemToProduct = (itemId) => {
     const item = itemsList.find(i => i.id === itemId);
     if (item && !assignedItems.some(a => a.item_id === itemId)) {
@@ -188,17 +183,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   const removeItemFromProduct = (itemId) => {
     setAssignedItems(assignedItems.filter(a => a.item_id !== itemId));
-  };
-
-  // Delete functions (kept from previous version)
-  const deleteItem = async (id, table) => {
-    if (!window.confirm('Are you sure you want to delete this?')) return;
-    try {
-      await supabase.from(table).delete().eq('id', id);
-      loadData();
-    } catch (e) {
-      alert('Delete failed: ' + e.message);
-    }
   };
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
@@ -235,60 +219,72 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </>
       )}
 
-      {/* ITEMS & SECTIONS TABS (simplified for space) */}
-      {activeTab === 'items' && <div>Items tab content here (same as previous version)</div>}
-      {activeTab === 'sections' && <div>Sections tab content here (same as previous version)</div>}
-
       {/* EDIT / ADD MODAL */}
       {(editingId || isCreating) && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '560px', maxHeight: '85vh', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3>{isCreating ? 'Add New' : 'Edit'}</h3>
-              <button onClick={cancelEdit}><X size={20} /></button>
+              <h3>{isCreating ? 'Add New Product' : 'Edit Product'}</h3>
+              <button onClick={cancelEdit} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}><X size={22} /></button>
             </div>
 
             {/* Name */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
-              <input value={editForm.label || editForm.name || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value, name: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+              <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
             </div>
 
-            {/* PRODUCT FIELDS WITH MULTI-ITEM ASSIGNMENT */}
-            {editForm.type === 'product' && (
-              <>
-                {/* Assigned Items (Multi) */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Assigned to Items</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-                    {assignedItems.map((a, idx) => (
-                      <div key={idx} style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-                        {a.sched_items?.label}
-                        <button onClick={() => removeItemFromProduct(a.item_id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
-                      </div>
-                    ))}
+            {/* Multi Item Assignment */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Assigned to Items</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                {assignedItems.map((a, idx) => (
+                  <div key={idx} style={{ background: '#f1f5f9', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                    {a.sched_items?.label}
+                    <button onClick={() => removeItemFromProduct(a.item_id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
                   </div>
-                  <select onChange={(e) => { if (e.target.value) addItemToProduct(e.target.value); e.target.value = ''; }} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
-                    <option value="">+ Add Item</option>
-                    {itemsList.filter(i => !assignedItems.some(a => a.item_id === i.id)).map(i => (
-                      <option key={i.id} value={i.id}>{i.label} {i.cbi_code ? `(${i.cbi_code})` : ''}</option>
-                    ))}
-                  </select>
-                </div>
+                ))}
+              </div>
+              <select onChange={(e) => { if (e.target.value) addItemToProduct(e.target.value); e.target.value = ''; }} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                <option value="">+ Assign to Item</option>
+                {itemsList.filter(i => !assignedItems.some(a => a.item_id === i.id)).map(i => (
+                  <option key={i.id} value={i.id}>{i.label} {i.cbi_code ? `(${i.cbi_code})` : ''}</option>
+                ))}
+              </select>
+            </div>
 
-                {/* Other product fields (Description, Links...) */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description</label>
-                  <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '80px' }} />
-                </div>
-              </>
-            )}
+            {/* Description */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description / Details</label>
+              <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '90px' }} />
+            </div>
 
-            <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
-              <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '10px 24px', borderRadius: '8px' }}>
+            {/* Links */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Product Page / Website Link</label>
+              <input value={editForm.product_link || ''} onChange={e => setEditForm({ ...editForm, product_link: e.target.value })} placeholder="https://" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>BRANZ Appraisal Link</label>
+              <input value={editForm.branz_link || ''} onChange={e => setEditForm({ ...editForm, branz_link: e.target.value })} placeholder="https://" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>CodeMark Certificate Link</label>
+              <input value={editForm.codemark_link || ''} onChange={e => setEditForm({ ...editForm, codemark_link: e.target.value })} placeholder="https://" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Installation Manual Link</label>
+              <input value={editForm.certificate_notes || ''} onChange={e => setEditForm({ ...editForm, certificate_notes: e.target.value })} placeholder="https://" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
+              <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '12px 28px', borderRadius: '8px', border: 'none', fontWeight: '500' }}>
                 {isCreating ? 'Create' : 'Save Changes'}
               </button>
-              <button onClick={cancelEdit}>Cancel</button>
+              <button onClick={cancelEdit} style={{ background: '#f3f4f6', color: '#374151', padding: '12px 28px', borderRadius: '8px', border: '1px solid #d1d5db' }}>Cancel</button>
             </div>
           </div>
         </div>

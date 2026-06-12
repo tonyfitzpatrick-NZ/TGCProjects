@@ -46,10 +46,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   async function loadAssignedItems(optionId) {
     const { data } = await supabase
       .from('sched_item_option_assignments')
-      .select(`
-        item_id,
-        sched_items(id, label, cbi_code)
-      `)
+      .select('item_id, sched_items(id, label, cbi_code)')
       .eq('option_id', optionId);
     setAssignedItems(data || []);
   }
@@ -61,10 +58,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
     if (type === 'product') {
       setEditForm({ type: 'product', label: '', detail: '', product_link: '', branz_link: '', codemark_link: '', certificate_notes: '' });
-    } else if (type === 'item') {
-      setEditForm({ type: 'item', label: '', section_id: sectionsList[0]?.id || '', cbi_code: '' });
-    } else if (type === 'section') {
-      setEditForm({ type: 'section', name: '' });
     }
   };
 
@@ -83,10 +76,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         certificate_notes: item.certificate_notes || ''
       });
       await loadAssignedItems(item.id || item.option_id);
-    } else if (type === 'item') {
-      setEditForm({ ...item, type: 'item' });
-    } else if (type === 'section') {
-      setEditForm({ ...item, type: 'section' });
     }
   };
 
@@ -105,17 +94,12 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         let optionId = editingId;
 
         if (isCreating) {
-          const { data: newOption } = await supabase
-            .from('sched_item_options')
-            .insert(productData)
-            .select()
-            .single();
+          const { data: newOption } = await supabase.from('sched_item_options').insert(productData).select().single();
           optionId = newOption.id;
         } else {
           await supabase.from('sched_item_options').update(productData).eq('id', editingId);
         }
 
-        // Save assignments to junction table
         if (optionId) {
           await supabase.from('sched_item_option_assignments').delete().eq('option_id', optionId);
           if (assignedItems.length > 0) {
@@ -125,25 +109,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
             }));
             await supabase.from('sched_item_option_assignments').insert(assignments);
           }
-        }
-      } 
-      else if (editForm.type === 'item') {
-        const itemData = {
-          label: editForm.label,
-          section_id: editForm.section_id,
-          cbi_code: editForm.cbi_code || null
-        };
-        if (isCreating) {
-          await supabase.from('sched_items').insert(itemData);
-        } else {
-          await supabase.from('sched_items').update(itemData).eq('id', editingId);
-        }
-      } 
-      else if (editForm.type === 'section') {
-        if (isCreating) {
-          await supabase.from('sched_sections').insert({ name: editForm.name });
-        } else {
-          await supabase.from('sched_sections').update({ name: editForm.name }).eq('id', editingId);
         }
       }
 
@@ -174,11 +139,20 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     setAssignedItems(assignedItems.filter(a => a.item_id !== itemId));
   };
 
+  const deleteItem = async (id, table) => {
+    if (!window.confirm('Are you sure you want to delete this?')) return;
+    try {
+      await supabase.from(table).delete().eq('id', id);
+      loadData();
+    } catch (e) {
+      alert('Delete failed: ' + e.message);
+    }
+  };
+
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
   return (
     <div>
-      {/* OPTIONS & PRODUCTS TAB - Rich Cards */}
       {activeTab === 'options' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -205,13 +179,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>{row.option_label}</div>
               {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
-              {/* Show assigned items */}
-              {row.sched_item_option_assignments && row.sched_item_option_assignments.length > 0 && (
-                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '10px' }}>
-                  Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label).join(', ')}
-                </div>
-              )}
-
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {row.product_link && <a href={row.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><ExternalLink size={14} /> Product</a>}
                 {row.branz_link && <a href={row.branz_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><Award size={14} /> BRANZ</a>}
@@ -236,7 +203,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
             </div>
 
-            {/* Multi-Item Assignment */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Assigned to Items</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>

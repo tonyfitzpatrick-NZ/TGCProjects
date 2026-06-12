@@ -103,7 +103,7 @@ export default function ScheduleAdminPanel() {
 
   return (
     <div>
-      {/* ==================== ONLY ONE TAB BAR ==================== */}
+      {/* ONLY ONE TAB BAR */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
         {[
           { key: 'options', label: 'Options & Products' },
@@ -134,7 +134,7 @@ export default function ScheduleAdminPanel() {
         <button onClick={loadData}><RefreshCw size={16} /> Refresh</button>
       </div>
 
-      {/* OPTIONS & PRODUCTS TAB */}
+      {/* OPTIONS TAB */}
       {activeTab === 'options' && (
         <>
           <div style={{ marginBottom: '16px' }}>
@@ -227,25 +227,14 @@ export default function ScheduleAdminPanel() {
               <button onClick={cancelEdit}><X size={20} /></button>
             </div>
 
-            <input 
-              value={editForm.label || editForm.name || ''} 
-              onChange={e => setEditForm({ ...editForm, label: e.target.value, name: e.target.value })} 
-              placeholder="Name" 
-              style={{ width: '100%', marginBottom: '12px' }} 
-            />
+            <input value={editForm.label || editForm.name || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value, name: e.target.value })} placeholder="Name" style={{ width: '100%', marginBottom: '12px' }} />
 
             {activeTab === 'items' && (
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ fontSize: '13px', color: '#666' }}>Category</label>
-                <select 
-                  value={editForm.section_id || ''} 
-                  onChange={e => setEditForm({ ...editForm, section_id: e.target.value })}
-                  style={{ width: '100%', padding: '10px', marginTop: '4px' }}
-                >
+                <select value={editForm.section_id || ''} onChange={e => setEditForm({ ...editForm, section_id: e.target.value })} style={{ width: '100%', padding: '10px', marginTop: '4px' }}>
                   <option value="">Select Category</option>
-                  {sectionsList.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
+                  {sectionsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
             )}

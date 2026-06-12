@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Edit2, X, Trash2 } from 'lucide-react';
+import { RefreshCw, Edit2, X, Trash2, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ScheduleAdminPanel({ activeTab = 'options' }) {
@@ -12,6 +12,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   const [sortBy, setSortBy] = useState('name');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -52,32 +53,61 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     }
   }
 
-  // ==================== EDIT ====================
+  // ==================== OPEN ADD / EDIT MODAL ====================
+  const openAddModal = (type) => {
+    setIsCreating(true);
+    setEditingId(null);
+    
+    if (type === 'product') {
+      setEditForm({ type: 'product', label: '', detail: '', product_link: '', branz_link: '', codemark_link: '', certificate_notes: '' });
+    } else if (type === 'item') {
+      setEditForm({ type: 'item', label: '', section_id: sectionsList[0]?.id || '', cbi_code: '' });
+    } else if (type === 'section') {
+      setEditForm({ type: 'section', name: '' });
+    }
+  };
+
   const startEdit = (item, type) => {
+    setIsCreating(false);
     setEditingId(item.id || item.option_id);
     if (type === 'product') {
       setEditForm({ ...item, type: 'product' });
     } else if (type === 'item') {
-      setEditForm({ ...item, type: 'item' }); // includes cbi_code
+      setEditForm({ ...item, type: 'item' });
     } else if (type === 'section') {
       setEditForm({ ...item, type: 'section' });
     }
   };
 
+  // ==================== SAVE (CREATE or UPDATE) ====================
   const saveEdit = async () => {
     try {
       if (editForm.type === 'product') {
-        await supabase.from('sched_item_options').update(editForm).eq('id', editingId);
+        if (isCreating) {
+          await supabase.from('sched_item_options').insert(editForm);
+        } else {
+          await supabase.from('sched_item_options').update(editForm).eq('id', editingId);
+        }
       } else if (editForm.type === 'item') {
-        await supabase.from('sched_items').update({
+        const itemData = {
           label: editForm.label,
           section_id: editForm.section_id,
           cbi_code: editForm.cbi_code || null
-        }).eq('id', editingId);
+        };
+        if (isCreating) {
+          await supabase.from('sched_items').insert(itemData);
+        } else {
+          await supabase.from('sched_items').update(itemData).eq('id', editingId);
+        }
       } else if (editForm.type === 'section') {
-        await supabase.from('sched_sections').update(editForm).eq('id', editingId);
+        if (isCreating) {
+          await supabase.from('sched_sections').insert({ name: editForm.name });
+        } else {
+          await supabase.from('sched_sections').update({ name: editForm.name }).eq('id', editingId);
+        }
       }
       setEditingId(null);
+      setIsCreating(false);
       loadData();
     } catch (e) {
       alert('Save failed: ' + e.message);
@@ -86,6 +116,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   const cancelEdit = () => {
     setEditingId(null);
+    setIsCreating(false);
     setEditForm({});
   };
 
@@ -132,12 +163,17 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
       {/* OPTIONS & PRODUCTS TAB */}
       {activeTab === 'options' && (
         <>
-          <div style={{ marginBottom: '16px' }}>
-            <button onClick={() => setSortBy('name')} style={{ background: sortBy === 'name' ? '#1B2B4B' : '#f1f5f9', color: sortBy === 'name' ? 'white' : 'black', padding: '6px 14px', borderRadius: '6px', marginRight: '8px' }}>
-              Sort by Name
-            </button>
-            <button onClick={() => setSortBy('cbi')} style={{ background: sortBy === 'cbi' ? '#1B2B4B' : '#f1f5f9', color: sortBy === 'cbi' ? 'white' : 'black', padding: '6px 14px', borderRadius: '6px' }}>
-              Sort by CBI
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div>
+              <button onClick={() => setSortBy('name')} style={{ background: sortBy === 'name' ? '#1B2B4B' : '#f1f5f9', color: sortBy === 'name' ? 'white' : 'black', padding: '6px 14px', borderRadius: '6px', marginRight: '8px' }}>
+                Sort by Name
+              </button>
+              <button onClick={() => setSortBy('cbi')} style={{ background: sortBy === 'cbi' ? '#1B2B4B' : '#f1f5f9', color: sortBy === 'cbi' ? 'white' : 'black', padding: '6px 14px', borderRadius: '6px' }}>
+                Sort by CBI
+              </button>
+            </div>
+            <button onClick={() => openAddModal('product')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#166534', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '500' }}>
+              <Plus size={16} /> Add New Product
             </button>
           </div>
 
@@ -159,7 +195,13 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
       {/* ITEMS TAB */}
       {activeTab === 'items' && (
-        <div>
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <button onClick={() => openAddModal('item')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#166534', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '500' }}>
+              <Plus size={16} /> Add New Item
+            </button>
+          </div>
+
           {data.map(item => (
             <div key={item.id} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -190,29 +232,27 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </div>
 
               <div style={{ marginTop: '12px' }}>
-                <select 
-                  onChange={(e) => {
-                    if (e.target.value) assignProductToItem(item.id, e.target.value);
-                    e.target.value = '';
-                  }}
-                  style={{ padding: '8px', width: '100%' }}
-                >
+                <select onChange={(e) => { if (e.target.value) assignProductToItem(item.id, e.target.value); e.target.value = ''; }} style={{ padding: '8px', width: '100%' }}>
                   <option value="">+ Assign a product to this item</option>
-                  {productsList
-                    .filter(p => !item.sched_item_options?.some(op => op.id === p.id))
-                    .map(p => (
-                      <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
+                  {productsList.filter(p => !item.sched_item_options?.some(op => op.id === p.id)).map(p => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
           ))}
-        </div>
+        </>
       )}
 
       {/* SECTIONS TAB */}
       {activeTab === 'sections' && (
-        <div>
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <button onClick={() => openAddModal('section')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#166534', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '500' }}>
+              <Plus size={16} /> Add New Section
+            </button>
+          </div>
+
           {data.map(sec => (
             <div key={sec.id} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -233,47 +273,42 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </div>
             </div>
           ))}
-        </div>
+        </>
       )}
 
-      {/* EDIT MODAL WITH LABELS + CBI CODE */}
-      {editingId && (
+      {/* EDIT / ADD MODAL */}
+      { (editingId || isCreating) && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '560px', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Edit</h3>
+              <h3 style={{ margin: 0 }}>{isCreating ? 'Add New' : 'Edit'}</h3>
               <button onClick={cancelEdit} style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer' }}><X size={22} /></button>
             </div>
 
-            {/* Name */}
+            {/* Form fields (same as before) */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
               <input value={editForm.label || editForm.name || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value, name: e.target.value })} placeholder="Enter name" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
             </div>
 
-            {/* Product fields */}
             {editForm.type === 'product' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description / Details</label>
                   <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} placeholder="Enter description" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '80px' }} />
                 </div>
-
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Product Page / Website Link</label>
                   <input value={editForm.product_link || ''} onChange={e => setEditForm({ ...editForm, product_link: e.target.value })} placeholder="https://..." style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                 </div>
-
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>BRANZ Appraisal Link</label>
                   <input value={editForm.branz_link || ''} onChange={e => setEditForm({ ...editForm, branz_link: e.target.value })} placeholder="https://branz..." style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                 </div>
-
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>CodeMark Certificate Link</label>
                   <input value={editForm.codemark_link || ''} onChange={e => setEditForm({ ...editForm, codemark_link: e.target.value })} placeholder="https://codem..." style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                 </div>
-
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Installation Manual Link</label>
                   <input value={editForm.certificate_notes || ''} onChange={e => setEditForm({ ...editForm, certificate_notes: e.target.value })} placeholder="Link to manual" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
@@ -281,7 +316,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </>
             )}
 
-            {/* Item fields - with CBI Code */}
             {editForm.type === 'item' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
@@ -290,22 +324,17 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
                     {sectionsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
-
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>CBI Reference Code</label>
-                  <input 
-                    value={editForm.cbi_code || ''} 
-                    onChange={e => setEditForm({ ...editForm, cbi_code: e.target.value })} 
-                    placeholder="e.g. 4221"
-                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} 
-                  />
+                  <input value={editForm.cbi_code || ''} onChange={e => setEditForm({ ...editForm, cbi_code: e.target.value })} placeholder="e.g. 4221" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                 </div>
               </>
             )}
 
-            {/* Action Buttons */}
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
-              <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '12px 28px', borderRadius: '8px', border: 'none', fontWeight: '500' }}>Save Changes</button>
+              <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '12px 28px', borderRadius: '8px', border: 'none', fontWeight: '500' }}>
+                {isCreating ? 'Create' : 'Save Changes'}
+              </button>
               <button onClick={cancelEdit} style={{ background: '#f3f4f6', color: '#374151', padding: '12px 28px', borderRadius: '8px', border: '1px solid #d1d5db' }}>Cancel</button>
             </div>
           </div>

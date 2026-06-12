@@ -110,7 +110,7 @@ export default function ScheduleAdminPanel() {
 
   return (
     <div>
-      {/* ONLY ONE TAB BAR - CLEAN VERSION */}
+      {/* ONLY ONE TAB BAR */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
         {[
           { key: 'options', label: 'Options & Products' },

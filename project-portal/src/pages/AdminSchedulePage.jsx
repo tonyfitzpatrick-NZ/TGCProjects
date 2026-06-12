@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import ScheduleAdminPanel from '../components/schedule/ScheduleAdminPanel';
@@ -16,26 +16,27 @@ export default function AdminSchedulePage() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <button onClick={() => navigate(-1)} style={{ padding: 8 }}>
-          <ArrowLeft size={24} />
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <ArrowLeft size={20} />
         </button>
-        <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 700 }}>Schedule of Finishes — Master Admin</h1>
+        <h1 style={{ fontSize: '24px', margin: 0 }}>Schedule of Finishes — Master Admin</h1>
       </div>
 
-      <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', paddingLeft: '24px' }}>
+      {/* Tabs controlled here */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 24px' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              padding: '16px 28px',
+              padding: '14px 32px',
               borderBottom: activeTab === tab.id ? '3px solid #1B2B4B' : '3px solid transparent',
               fontWeight: activeTab === tab.id ? '600' : '500',
-              color: activeTab === tab.id ? '#1B2B4B' : '#666',
               background: 'none',
               border: 'none',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              fontSize: '15px'
             }}
           >
             {tab.label}
@@ -43,7 +44,8 @@ export default function AdminSchedulePage() {
         ))}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+      {/* Pass activeTab to the panel */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
         <ScheduleAdminPanel activeTab={activeTab} />
       </div>
     </div>

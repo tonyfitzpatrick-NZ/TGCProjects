@@ -12,7 +12,7 @@ import { supabase } from '../../lib/supabase';
 export default function ScheduleAdminPanel() {
   const [activeTab, setActiveTab] = useState('options');
   const [data, setData] = useState([]);
-  const [sectionsList, setSectionsList] = useState([]); // for dropdowns
+  const [sectionsList, setSectionsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,15 +28,11 @@ export default function ScheduleAdminPanel() {
     setLoading(true);
     setError('');
     try {
-      // Always load sections for dropdowns
       const { data: secs } = await supabase.from('sched_sections').select('*').order('sort_order');
       setSectionsList(secs || []);
 
       if (activeTab === 'options') {
-        const { data: rows } = await supabase
-          .from('v_sched_master')
-          .select('*')
-          .order('section_order, item_order');
+        const { data: rows } = await supabase.from('v_sched_master').select('*').order('section_order, item_order');
         setData(rows || []);
       }
       if (activeTab === 'items') {
@@ -114,7 +110,7 @@ export default function ScheduleAdminPanel() {
 
   return (
     <div>
-      {/* SINGLE CLEAN TAB BAR */}
+      {/* ONLY ONE TAB BAR - CLEAN VERSION */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
         {[
           { key: 'options', label: 'Options & Products' },
@@ -173,7 +169,7 @@ export default function ScheduleAdminPanel() {
         </>
       )}
 
-      {/* ELEMENTS (ITEMS) TAB */}
+      {/* ELEMENTS TAB */}
       {activeTab === 'items' && (
         <div>
           {data.map(item => (
@@ -200,7 +196,7 @@ export default function ScheduleAdminPanel() {
         </div>
       )}
 
-      {/* SECTIONS (CATEGORIES) TAB */}
+      {/* SECTIONS TAB */}
       {activeTab === 'sections' && (
         <div>
           {data.map(sec => (
@@ -229,7 +225,7 @@ export default function ScheduleAdminPanel() {
 
       {activeTab === 'templates' && <p>Templates coming soon...</p>}
 
-      {/* EDIT MODAL - Now supports changing parent category for Items */}
+      {/* EDIT MODAL */}
       {editingId && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '520px', maxHeight: '80vh', overflowY: 'auto' }}>
@@ -245,7 +241,6 @@ export default function ScheduleAdminPanel() {
               style={{ width: '100%', marginBottom: '12px' }} 
             />
 
-            {/* Allow changing parent Category when editing an Item */}
             {activeTab === 'items' && (
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ fontSize: '13px', color: '#666' }}>Category</label>
@@ -264,12 +259,7 @@ export default function ScheduleAdminPanel() {
 
             {activeTab === 'options' && (
               <>
-                <textarea 
-                  value={editForm.detail || ''} 
-                  onChange={e => setEditForm({ ...editForm, detail: e.target.value })} 
-                  placeholder="Description" 
-                  style={{ width: '100%', marginBottom: '12px', minHeight: '80px' }} 
-                />
+                <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} placeholder="Description" style={{ width: '100%', marginBottom: '12px', minHeight: '80px' }} />
                 <input value={editForm.product_link || ''} onChange={e => setEditForm({ ...editForm, product_link: e.target.value })} placeholder="Product Link" style={{ width: '100%', marginBottom: '8px' }} />
               </>
             )}

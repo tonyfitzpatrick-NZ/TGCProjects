@@ -34,28 +34,17 @@ export default function ScheduleAdminPanel() {
           .order('section_order, item_order');
         setData(rows || []);
       }
-
       if (activeTab === 'items') {
-        // Load items + their assigned products
         const { data: rows } = await supabase
           .from('sched_items')
-          .select(`
-            *,
-            sched_sections(name),
-            sched_item_options(id, label)
-          `)
+          .select('*, sched_sections(name), sched_item_options(id, label)')
           .order('sort_order');
         setData(rows || []);
       }
-
       if (activeTab === 'sections') {
-        // Load sections + their elements
         const { data: rows } = await supabase
           .from('sched_sections')
-          .select(`
-            *,
-            sched_items(id, label, cbi_code)
-          `)
+          .select('*, sched_items(id, label, cbi_code)')
           .order('sort_order');
         setData(rows || []);
       }
@@ -66,7 +55,6 @@ export default function ScheduleAdminPanel() {
     }
   }
 
-  // Sorting for Options tab
   const getSortedOptions = () => {
     if (activeTab !== 'options') return data;
     return [...data].sort((a, b) => {
@@ -182,7 +170,7 @@ export default function ScheduleAdminPanel() {
         </>
       )}
 
-      {/* ELEMENTS (ITEMS) TAB - Now shows assigned Products */}
+      {/* ELEMENTS TAB */}
       {activeTab === 'items' && (
         <div>
           {data.map(item => (
@@ -190,22 +178,18 @@ export default function ScheduleAdminPanel() {
               <button onClick={() => startEdit(item, 'item')} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', color: '#64748b' }}>
                 <Edit2 size={18} />
               </button>
-
               <strong>{item.label}</strong>
               {item.cbi_code && <span style={{ marginLeft: '12px', color: '#64748b' }}>CBI: {item.cbi_code}</span>}
               <div style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>{item.sched_sections?.name}</div>
 
-              {/* Assigned Products */}
               <div style={{ fontSize: '13px', color: '#475569' }}>
                 <strong>Products:</strong>
-                {item.sched_item_options && item.sched_item_options.length > 0 ? (
+                {item.sched_item_options?.length > 0 ? (
                   <ul style={{ marginTop: '6px', paddingLeft: '20px' }}>
-                    {item.sched_item_options.map(opt => (
-                      <li key={opt.id}>{opt.label}</li>
-                    ))}
+                    {item.sched_item_options.map(opt => <li key={opt.id}>{opt.label}</li>)}
                   </ul>
                 ) : (
-                  <span style={{ color: '#94a3b8' }}> No products assigned yet</span>
+                  <span style={{ color: '#94a3b8' }}> No products assigned</span>
                 )}
               </div>
             </div>
@@ -213,7 +197,7 @@ export default function ScheduleAdminPanel() {
         </div>
       )}
 
-      {/* CATEGORIES (SECTIONS) TAB - Now shows assigned Elements */}
+      {/* SECTIONS TAB */}
       {activeTab === 'sections' && (
         <div>
           {data.map(sec => (
@@ -221,18 +205,14 @@ export default function ScheduleAdminPanel() {
               <button onClick={() => startEdit(sec, 'section')} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', color: '#64748b' }}>
                 <Edit2 size={18} />
               </button>
-
               <strong style={{ fontSize: '17px' }}>{sec.name}</strong>
 
-              {/* Assigned Elements */}
               <div style={{ marginTop: '12px', fontSize: '14px' }}>
                 <strong>Elements:</strong>
-                {sec.sched_items && sec.sched_items.length > 0 ? (
+                {sec.sched_items?.length > 0 ? (
                   <ul style={{ marginTop: '6px', paddingLeft: '20px' }}>
                     {sec.sched_items.map(el => (
-                      <li key={el.id}>
-                        {el.label} {el.cbi_code && <span style={{ color: '#64748b' }}>({el.cbi_code})</span>}
-                      </li>
+                      <li key={el.id}>{el.label} {el.cbi_code && <span style={{ color: '#64748b' }}>({el.cbi_code})</span>}</li>
                     ))}
                   </ul>
                 ) : (
@@ -246,18 +226,58 @@ export default function ScheduleAdminPanel() {
 
       {activeTab === 'templates' && <p>Templates coming soon...</p>}
 
-      {/* Edit Modal */}
+      {/* Edit Modal - FIXED JSX */}
       {editingId && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '520px' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '520px', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h3>Edit</h3>
               <button onClick={cancelEdit}><X size={20} /></button>
             </div>
 
-            <input value={editForm.label || editForm.name || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value, name: e.target.value })} placeholder="Name" style={{ width: '100%', marginBottom: '12px' }} />
+            <input 
+              value={editForm.label || editForm.name || ''} 
+              onChange={e => setEditForm({ ...editForm, label: e.target.value, name: e.target.value })} 
+              placeholder="Name" 
+              style={{ width: '100%', marginBottom: '12px' }} 
+            />
 
             {activeTab === 'options' && (
               <>
-                <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} placeholder="Description" style={{ width: '100%', marginBottom: '12px' }} />
-                <input value={editForm.product_link || ''} onChange={e => setEditForm({
+                <textarea 
+                  value={editForm.detail || ''} 
+                  onChange={e => setEditForm({ ...editForm, detail: e.target.value })} 
+                  placeholder="Description" 
+                  style={{ width: '100%', marginBottom: '12px', minHeight: '80px' }} 
+                />
+                <input 
+                  value={editForm.product_link || ''} 
+                  onChange={e => setEditForm({ ...editForm, product_link: e.target.value })} 
+                  placeholder="Product Link" 
+                  style={{ width: '100%', marginBottom: '8px' }} 
+                />
+                <input 
+                  value={editForm.codemark_link || ''} 
+                  onChange={e => setEditForm({ ...editForm, codemark_link: e.target.value })} 
+                  placeholder="CodeMark Link" 
+                  style={{ width: '100%', marginBottom: '8px' }} 
+                />
+                <input 
+                  value={editForm.branz_link || ''} 
+                  onChange={e => setEditForm({ ...editForm, branz_link: e.target.value })} 
+                  placeholder="BRANZ Link" 
+                  style={{ width: '100%', marginBottom: '8px' }} 
+                />
+              </>
+            )}
+
+            <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
+              <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '10px 24px', borderRadius: '8px' }}>Save</button>
+              <button onClick={cancelEdit}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

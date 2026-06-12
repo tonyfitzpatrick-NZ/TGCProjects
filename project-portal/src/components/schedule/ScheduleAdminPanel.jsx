@@ -7,6 +7,10 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [isCreating, setIsCreating] = useState(false);
+
   useEffect(() => {
     loadData();
   }, [activeTab]);
@@ -25,18 +29,143 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     }
   }
 
-  if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading Master Schedule...</div>;
-  if (error) return <div style={{ padding: '40px', color: 'red' }}>Error: {error}</div>;
+  const openAddModal = () => {
+    setIsCreating(true);
+    setEditingId(null);
+    setEditForm({ label: '', detail: '', product_link: '', branz_link: '', codemark_link: '', certificate_notes: '' });
+  };
+
+  const startEdit = (row) => {
+    setIsCreating(false);
+    setEditingId(row.option_id);
+    setEditForm({
+      label: row.option_label || '',
+      detail: row.detail || '',
+      product_link: row.product_link || '',
+      branz_link: row.branz_link || '',
+      codemark_link: row.codemark_link || '',
+      certificate_notes: row.certificate_notes || ''
+    });
+  };
+
+  const saveEdit = async () => {
+    try {
+      const productData = {
+        label: editForm.label,
+        detail: editForm.detail || null,
+        product_link: editForm.product_link || null,
+        branz_link: editForm.branz_link || null,
+        codemark_link: editForm.codemark_link || null,
+        certificate_notes: editForm.certificate_notes || null
+      };
+
+      if (isCreating) {
+        await supabase.from('sched_item_options').insert(productData);
+      } else {
+        await supabase.from('sched_item_options').update(productData).eq('id', editingId);
+      }
+
+      setEditingId(null);
+      setIsCreating(false);
+      loadData();
+    } catch (e) {
+      alert('Save failed: ' + e.message);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setIsCreating(false);
+    setEditForm({});
+  };
+
+  const deleteItem = async (id) => {
+    if (!window.confirm('Delete this product?')) return;
+    try {
+      await supabase.from('sched_item_options').delete().eq('id', id);
+      loadData();
+    } catch (e) {
+      alert('Delete failed: ' + e.message);
+    }
+  };
+
+  if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
   return (
     <div>
-      <h2>Master Schedule — Options & Products</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <h2>Options & Products</h2>
+        <button onClick={openAddModal} style={{ padding: '8px 16px', background: '#166534', color: 'white', border: 'none', borderRadius: '8px' }}>
+          <Plus size={16} /> Add New Product
+        </button>
+      </div>
+
       {data.map((row, index) => (
-        <div key={index} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '12px' }}>
-          <strong>{row.option_label}</strong>
-          {row.detail && <div style={{ marginTop: '6px' }}>{row.detail}</div>}
+        <div key={index} style={{ padding: '18px 22px', border: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '14px', position: 'relative', background: '#fff' }}>
+          <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px' }}>
+            <button onClick={() => startEdit(row)}><Edit2 size={18} /></button>
+            <button onClick={() => deleteItem(row.option_id)}><Trash2 size={18} color="#ef4444" /></button>
+          </div>
+
+          <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>{row.option_label}</div>
+          {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {row.product_link && <a href={row.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><ExternalLink size={14} /> Product</a>}
+            {row.branz_link && <a href={row.branz_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><Award size={14} /> BRANZ</a>}
+            {row.codemark_link && <a href={row.codemark_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px', textDecoration: 'none' }}><Shield size={14} /> CodeMark</a>}
+          </div>
         </div>
       ))}
+
+      {/* EDIT MODAL */}
+      {(editingId || isCreating) && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3>{isCreating ? 'Add New Product' : 'Edit Product'}</h3>
+              <button onClick={cancelEdit}><X size={22} /></button>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
+              <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description / Details</label>
+              <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '90px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Product Page / Website Link</label>
+              <input value={editForm.product_link || ''} onChange={e => setEditForm({ ...editForm, product_link: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>BRANZ Appraisal Link</label>
+              <input value={editForm.branz_link || ''} onChange={e => setEditForm({ ...editForm, branz_link: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>CodeMark Certificate Link</label>
+              <input value={editForm.codemark_link || ''} onChange={e => setEditForm({ ...editForm, codemark_link: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Installation Manual Link</label>
+              <input value={editForm.certificate_notes || ''} onChange={e => setEditForm({ ...editForm, certificate_notes: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+            </div>
+
+            <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
+              <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '12px 28px', borderRadius: '8px', border: 'none', fontWeight: '500' }}>
+                {isCreating ? 'Create' : 'Save Changes'}
+              </button>
+              <button onClick={cancelEdit} style={{ background: '#f3f4f6', color: '#374151', padding: '12px 28px', borderRadius: '8px', border: '1px solid #d1d5db' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

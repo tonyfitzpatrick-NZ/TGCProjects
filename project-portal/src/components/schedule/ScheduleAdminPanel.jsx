@@ -136,7 +136,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
   if (activeTab !== 'options') {
-    return <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>Coming soon: {activeTab} tab</div>;
+    return <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>Coming soon — {activeTab}</div>;
   }
 
   return (

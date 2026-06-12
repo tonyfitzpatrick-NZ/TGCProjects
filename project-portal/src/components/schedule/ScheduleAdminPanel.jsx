@@ -81,39 +81,50 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   // ==================== SAVE (CREATE or UPDATE) ====================
   const saveEdit = async () => {
-    try {
-      if (editForm.type === 'product') {
-        if (isCreating) {
-          await supabase.from('sched_item_options').insert(editForm);
-        } else {
-          await supabase.from('sched_item_options').update(editForm).eq('id', editingId);
-        }
-      } else if (editForm.type === 'item') {
-        const itemData = {
-          label: editForm.label,
-          section_id: editForm.section_id,
-          cbi_code: editForm.cbi_code || null
-        };
-        if (isCreating) {
-          await supabase.from('sched_items').insert(itemData);
-        } else {
-          await supabase.from('sched_items').update(itemData).eq('id', editingId);
-        }
-      } else if (editForm.type === 'section') {
-        if (isCreating) {
-          await supabase.from('sched_sections').insert({ name: editForm.name });
-        } else {
-          await supabase.from('sched_sections').update({ name: editForm.name }).eq('id', editingId);
-        }
-      }
-      setEditingId(null);
-      setIsCreating(false);
-      loadData();
-    } catch (e) {
-      alert('Save failed: ' + e.message);
-    }
-  };
+  try {
+    if (editForm.type === 'product') {
+      const productData = {
+        label: editForm.label,
+        detail: editForm.detail || null,
+        product_link: editForm.product_link || null,
+        branz_link: editForm.branz_link || null,
+        codemark_link: editForm.codemark_link || null,
+        certificate_notes: editForm.certificate_notes || null
+      };
 
+      if (isCreating) {
+        await supabase.from('sched_item_options').insert(productData);
+      } else {
+        await supabase.from('sched_item_options').update(productData).eq('id', editingId);
+      }
+    } 
+    else if (editForm.type === 'item') {
+      const itemData = {
+        label: editForm.label,
+        section_id: editForm.section_id,
+        cbi_code: editForm.cbi_code || null
+      };
+      if (isCreating) {
+        await supabase.from('sched_items').insert(itemData);
+      } else {
+        await supabase.from('sched_items').update(itemData).eq('id', editingId);
+      }
+    } 
+    else if (editForm.type === 'section') {
+      if (isCreating) {
+        await supabase.from('sched_sections').insert({ name: editForm.name });
+      } else {
+        await supabase.from('sched_sections').update({ name: editForm.name }).eq('id', editingId);
+      }
+    }
+
+    setEditingId(null);
+    setIsCreating(false);
+    loadData();
+  } catch (e) {
+    alert('Save failed: ' + e.message);
+  }
+};
   const cancelEdit = () => {
     setEditingId(null);
     setIsCreating(false);

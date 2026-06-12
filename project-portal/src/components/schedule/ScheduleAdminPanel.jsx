@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCw, Edit2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-export default function ScheduleAdminPanel() {
-  const [activeTab, setActiveTab] = useState('options');
+export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   const [data, setData] = useState([]);
   const [sectionsList, setSectionsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,38 +102,6 @@ export default function ScheduleAdminPanel() {
 
   return (
     <div>
-      {/* ONLY ONE TAB BAR */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
-        {[
-          { key: 'options', label: 'Options & Products' },
-          { key: 'items', label: 'Items' },
-          { key: 'sections', label: 'Sections' },
-          { key: 'templates', label: 'Templates' }
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: '14px 32px',
-              borderBottom: activeTab === tab.key ? '3px solid #1B2B4B' : '3px solid transparent',
-              fontWeight: activeTab === tab.key ? '600' : '500',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '15px'
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>Master Schedule — Full Edit</h2>
-        <button onClick={loadData}><RefreshCw size={16} /> Refresh</button>
-      </div>
-
-      {/* OPTIONS TAB */}
       {activeTab === 'options' && (
         <>
           <div style={{ marginBottom: '16px' }}>
@@ -162,7 +129,6 @@ export default function ScheduleAdminPanel() {
         </>
       )}
 
-      {/* ITEMS TAB */}
       {activeTab === 'items' && (
         <div>
           {data.map(item => (
@@ -189,7 +155,6 @@ export default function ScheduleAdminPanel() {
         </div>
       )}
 
-      {/* SECTIONS TAB */}
       {activeTab === 'sections' && (
         <div>
           {data.map(sec => (
@@ -218,7 +183,7 @@ export default function ScheduleAdminPanel() {
 
       {activeTab === 'templates' && <p>Templates coming soon...</p>}
 
-      {/* EDIT MODAL */}
+      {/* Edit Modal */}
       {editingId && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '520px', maxHeight: '80vh', overflowY: 'auto' }}>

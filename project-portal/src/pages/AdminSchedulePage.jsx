@@ -16,14 +16,19 @@ export default function AdminSchedulePage() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ 
+        padding: '20px 24px', 
+        borderBottom: '1px solid #e2e8f0', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '16px' 
+      }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
           <ArrowLeft size={20} />
         </button>
         <h1 style={{ fontSize: '24px', margin: 0 }}>Schedule of Finishes — Master Admin</h1>
       </div>
 
-      {/* Tabs controlled here */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 24px' }}>
         {tabs.map(tab => (
           <button
@@ -44,7 +49,6 @@ export default function AdminSchedulePage() {
         ))}
       </div>
 
-      {/* Pass activeTab to the panel */}
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
         <ScheduleAdminPanel activeTab={activeTab} />
       </div>

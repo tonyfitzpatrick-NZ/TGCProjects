@@ -107,8 +107,8 @@ export default function ScheduleAdminPanel() {
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
         {[
           { key: 'options', label: 'Options & Products' },
-          { key: 'items', label: 'Elements (Items)' },
-          { key: 'sections', label: 'Categories (Sections)' },
+          { key: 'items', label: 'Items' },
+          { key: 'sections', label: 'Sections' },
           { key: 'templates', label: 'Templates' }
         ].map(tab => (
           <button
@@ -162,7 +162,7 @@ export default function ScheduleAdminPanel() {
         </>
       )}
 
-      {/* ELEMENTS TAB */}
+      {/* ITEMS TAB */}
       {activeTab === 'items' && (
         <div>
           {data.map(item => (

@@ -164,7 +164,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
-  // Non-Options tabs
   if (activeTab !== 'options') {
     return (
       <div>
@@ -183,7 +182,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
             </div>
             <div style={{ fontWeight: '600' }}>{row.name || row.label}</div>
             {row.cbi_code && <div style={{ fontSize: '13px', color: '#666' }}>CBI: {row.cbi_code}</div>}
-            {row.sched_sections && <div style={{ fontSize: '13px', color: '#666' }}>Section: {row.sched_sections.name}</div>}
           </div>
         ))}
       </div>
@@ -227,14 +225,13 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               <button onClick={cancelEdit}><X size={22} /></button>
             </div>
 
-            {/* Dynamic fields based on tab */}
+            {/* Dynamic fields */}
             {activeTab === 'options' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
                   <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                 </div>
-                {/* Assignment section */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Assigned to Items</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
@@ -252,12 +249,10 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
                     ))}
                   </select>
                 </div>
-                {/* Other fields for products */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description / Details</label>
                   <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '90px' }} />
                 </div>
-                {/* Add the other link fields here if you want them */}
               </>
             )}
 

@@ -216,7 +216,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </div>
       ))}
 
-      {/* Full Edit Modal */}
+      {/* EDIT MODAL */}
       {(editingId || isCreating) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -225,14 +225,13 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               <button onClick={cancelEdit}><X size={22} /></button>
             </div>
 
-            {/* Options Tab Fields */}
+            {/* Options Tab */}
             {activeTab === 'options' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
                   <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                 </div>
-
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Assigned to Items</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
@@ -250,7 +249,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
                     ))}
                   </select>
                 </div>
-
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description / Details</label>
                   <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '90px' }} />
@@ -258,7 +256,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </>
             )}
 
-            {/* Items Tab Fields */}
+            {/* Items Tab */}
             {activeTab === 'items' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
@@ -278,7 +276,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </>
             )}
 
-            {/* Sections Tab Fields */}
+            {/* Sections Tab */}
             {activeTab === 'sections' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Section Name</label>

@@ -164,6 +164,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
+  // Items and Sections tabs
   if (activeTab !== 'options') {
     return (
       <div>
@@ -216,7 +217,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </div>
       ))}
 
-      {/* EDIT MODAL */}
+      {/* Unified Edit Modal */}
       {(editingId || isCreating) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -225,7 +226,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               <button onClick={cancelEdit}><X size={22} /></button>
             </div>
 
-            {/* Options Tab */}
+            {/* Fields for Options */}
             {activeTab === 'options' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
@@ -256,7 +257,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </>
             )}
 
-            {/* Items Tab */}
+            {/* Fields for Items */}
             {activeTab === 'items' && (
               <>
                 <div style={{ marginBottom: '16px' }}>
@@ -276,7 +277,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
               </>
             )}
 
-            {/* Sections Tab */}
+            {/* Fields for Sections */}
             {activeTab === 'sections' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Section Name</label>

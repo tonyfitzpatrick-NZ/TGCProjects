@@ -20,16 +20,9 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     setLoading(true);
     try {
       if (activeTab === 'options') {
-        // This join is key for showing assigned items on cards
         const { data: rows } = await supabase
           .from('v_sched_master')
-          .select(`
-            *,
-            sched_item_option_assignments (
-              item_id,
-              sched_items (id, label, cbi_code)
-            )
-          `)
+          .select('*')
           .order('section_order, item_order');
         setData(rows || []);
       } else {
@@ -42,7 +35,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         .order('sort_order');
       setItemsList(items || []);
     } catch (e) {
-      console.error('Load error:', e);
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -108,7 +101,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
       setEditingId(null);
       setIsCreating(false);
       setAssignedItems([]);
-      loadData(); // Refresh with join
+      loadData();
     } catch (e) {
       console.error(e);
       alert('Save failed: ' + e.message);
@@ -158,16 +151,9 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>{row.option_label}</div>
           {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
-          {/* Assigned Items Display */}
-          {row.sched_item_option_assignments && row.sched_item_option_assignments.length > 0 ? (
-            <div style={{ fontSize: '13px', color: '#166534', marginBottom: '10px', fontWeight: '500' }}>
-              Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label || 'Unknown').join(', ')}
-            </div>
-          ) : (
-            <div style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>No items assigned yet</div>
-          )}
+          <div style={{ fontSize: '13px', color: '#888' }}>Assigned items hidden for stability</div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
             {row.product_link && <a href={row.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px' }}>Product</a>}
             {row.branz_link && <a href={row.branz_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px' }}>BRANZ</a>}
             {row.codemark_link && <a href={row.codemark_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px' }}>CodeMark</a>}
@@ -175,7 +161,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </div>
       ))}
 
-      {/* EDIT MODAL */}
+      {/* EDIT MODAL with Assignment */}
       {(editingId || isCreating) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '580px', maxHeight: '90vh', overflowY: 'auto' }}>

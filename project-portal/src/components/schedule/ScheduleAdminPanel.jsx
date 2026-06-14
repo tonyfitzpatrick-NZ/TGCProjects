@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   const [data, setData] = useState([]);
   const [itemsList, setItemsList] = useState([]);
+  const [sectionsList, setSectionsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [editingId, setEditingId] = useState(null);
@@ -25,15 +26,20 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           .select('*')
           .order('section_order, item_order');
         setData(rows || []);
-      } else {
-        setData([]);
+      } else if (activeTab === 'items') {
+        const { data: items } = await supabase.from('sched_items').select('*').order('sort_order');
+        setData(items || []);
+      } else if (activeTab === 'sections') {
+        const { data: secs } = await supabase.from('sched_sections').select('*').order('sort_order');
+        setData(secs || []);
       }
 
-      const { data: items } = await supabase
-        .from('sched_items')
-        .select('id, label, cbi_code')
-        .order('sort_order');
+      // Common lists
+      const { data: items } = await supabase.from('sched_items').select('id, label, cbi_code').order('sort_order');
       setItemsList(items || []);
+
+      const { data: secs } = await supabase.from('sched_sections').select('*').order('sort_order');
+      setSectionsList(secs || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -58,43 +64,47 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   const startEdit = async (row) => {
     setIsCreating(false);
-    setEditingId(row.option_id);
+    setEditingId(row.option_id || row.id);
     setEditForm({
-      label: row.option_label || row.label || '',
+      label: row.option_label || row.label || row.name || '',
       detail: row.detail || '',
       product_link: row.product_link || '',
       branz_link: row.branz_link || '',
       codemark_link: row.codemark_link || '',
-      certificate_notes: row.certificate_notes || ''
+      certificate_notes: row.certificate_notes || '',
+      cbi_code: row.cbi_code || '',
+      section_id: row.section_id || ''
     });
-    await loadAssignedItems(row.option_id);
+    if (row.option_id) await loadAssignedItems(row.option_id);
   };
 
   const saveEdit = async () => {
     try {
-      const productData = {
-        label: editForm.label,
-        detail: editForm.detail || null,
-        product_link: editForm.product_link || null,
-        branz_link: editForm.branz_link || null,
-        codemark_link: editForm.codemark_link || null,
-        certificate_notes: editForm.certificate_notes || null
-      };
+      if (activeTab === 'options') {
+        const productData = {
+          label: editForm.label,
+          detail: editForm.detail || null,
+          product_link: editForm.product_link || null,
+          branz_link: editForm.branz_link || null,
+          codemark_link: editForm.codemark_link || null,
+          certificate_notes: editForm.certificate_notes || null
+        };
 
-      let optionId = editingId;
+        let optionId = editingId;
 
-      if (isCreating) {
-        const { data: newOpt } = await supabase.from('sched_item_options').insert(productData).select().single();
-        optionId = newOpt.id;
-      } else {
-        await supabase.from('sched_item_options').update(productData).eq('id', editingId);
-      }
+        if (isCreating) {
+          const { data: newOpt } = await supabase.from('sched_item_options').insert(productData).select().single();
+          optionId = newOpt.id;
+        } else {
+          await supabase.from('sched_item_options').update(productData).eq('id', editingId);
+        }
 
-      if (optionId) {
-        await supabase.from('sched_item_option_assignments').delete().eq('option_id', optionId);
-        if (assignedItems.length > 0) {
-          const assignments = assignedItems.map(a => ({ item_id: a.item_id, option_id: optionId }));
-          await supabase.from('sched_item_option_assignments').insert(assignments);
+        if (optionId) {
+          await supabase.from('sched_item_option_assignments').delete().eq('option_id', optionId);
+          if (assignedItems.length > 0) {
+            const assignments = assignedItems.map(a => ({ item_id: a.item_id, option_id: optionId }));
+            await supabase.from('sched_item_option_assignments').insert(assignments);
+          }
         }
       }
 
@@ -129,7 +139,12 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
   if (activeTab !== 'options') {
-    return <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>Coming soon: {activeTab}</div>;
+    return (
+      <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>
+        <h3>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Management</h3>
+        <p>Basic editing coming soon...</p>
+      </div>
+    );
   }
 
   return (
@@ -151,9 +166,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>{row.option_label}</div>
           {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
-          <div style={{ fontSize: '13px', color: '#888' }}>Assigned items hidden for stability</div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {row.product_link && <a href={row.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px' }}>Product</a>}
             {row.branz_link && <a href={row.branz_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px' }}>BRANZ</a>}
             {row.codemark_link && <a href={row.codemark_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', fontSize: '13px' }}>CodeMark</a>}

@@ -101,7 +101,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
       setEditingId(null);
       setIsCreating(false);
       setAssignedItems([]);
-      loadData();   // Refresh list
+      loadData(); // Refresh to show changes
     } catch (e) {
       console.error(e);
       alert('Save failed: ' + e.message);
@@ -152,10 +152,12 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
           {/* Assigned Items Display */}
-          {row.sched_item_option_assignments && row.sched_item_option_assignments.length > 0 && (
+          {row.sched_item_option_assignments && row.sched_item_option_assignments.length > 0 ? (
             <div style={{ fontSize: '13px', color: '#166534', marginBottom: '10px', fontWeight: '500' }}>
               Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label || 'Unknown').join(', ')}
             </div>
+          ) : (
+            <div style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>No items assigned yet</div>
           )}
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

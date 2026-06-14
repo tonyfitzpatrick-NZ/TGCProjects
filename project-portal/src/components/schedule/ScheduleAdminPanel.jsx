@@ -19,12 +19,21 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
   async function loadData() {
     setLoading(true);
     try {
-      // Simple load first (most reliable)
-      const { data: rows } = await supabase
-        .from('v_sched_master')
-        .select('*')
-        .order('section_order, item_order');
-      setData(rows || []);
+      if (activeTab === 'options') {
+        const { data: rows } = await supabase
+          .from('v_sched_master')
+          .select(`
+            *,
+            sched_item_option_assignments (
+              item_id,
+              sched_items (id, label, cbi_code)
+            )
+          `)
+          .order('section_order, item_order');
+        setData(rows || []);
+      } else {
+        setData([]); // Other tabs will be empty for now
+      }
 
       const { data: items } = await supabase
         .from('sched_items')
@@ -125,6 +134,16 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
+  // Other tabs placeholder
+  if (activeTab !== 'options') {
+    return (
+      <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>
+        <h3>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Management</h3>
+        <p>Coming soon...</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -133,8 +152,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           <Plus size={16} /> Add New Product
         </button>
       </div>
-
-      {data.length === 0 && <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>No products found</div>}
 
       {data.map((row, index) => (
         <div key={index} style={{ padding: '18px 22px', border: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '14px', position: 'relative', background: '#fff' }}>
@@ -146,10 +163,10 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>{row.option_label}</div>
           {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
-          {/* Assigned Items */}
+          {/* Assigned Items - Improved display */}
           {row.sched_item_option_assignments && row.sched_item_option_assignments.length > 0 && (
-            <div style={{ fontSize: '13px', color: '#166534', marginBottom: '10px' }}>
-              Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label).join(', ')}
+            <div style={{ fontSize: '13px', color: '#166534', marginBottom: '10px', fontWeight: '500' }}>
+              Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label || 'Unknown Item').join(', ')}
             </div>
           )}
 

@@ -29,9 +29,10 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
       } else if (activeTab === 'sections') {
         const { data: secs } = await supabase.from('sched_sections').select('*').order('sort_order');
         setData(secs || []);
+      } else {
+        setData([]);
       }
 
-      // Common data
       const { data: items } = await supabase.from('sched_items').select('id, label, cbi_code').order('sort_order');
       setItemsList(items || []);
 
@@ -163,6 +164,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
+  // Non-Options tabs
   if (activeTab !== 'options') {
     return (
       <div>
@@ -181,16 +183,16 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
             </div>
             <div style={{ fontWeight: '600' }}>{row.name || row.label}</div>
             {row.cbi_code && <div style={{ fontSize: '13px', color: '#666' }}>CBI: {row.cbi_code}</div>}
+            {row.sched_sections && <div style={{ fontSize: '13px', color: '#666' }}>Section: {row.sched_sections.name}</div>}
           </div>
         ))}
       </div>
     );
   }
 
-  // Options & Products tab (full with assignment)
+  // Options & Products Tab
   return (
     <div>
-      {/* ... same as previous stable Products tab with assignment ... */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h2>Options & Products</h2>
         <button onClick={openAddModal} style={{ padding: '8px 16px', background: '#166534', color: 'white', border: 'none', borderRadius: '8px' }}>
@@ -216,13 +218,83 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </div>
       ))}
 
-      {/* EDIT MODAL (Options tab) */}
-      {(editingId || isCreating) && activeTab === 'options' && (
+      {/* EDIT MODAL */}
+      {(editingId || isCreating) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          {/* Full modal with assignment - same as before */}
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
-            {/* ... (keep the full modal from the previous working version) ... */}
-            {/* I can provide the full modal if needed, but to save space assume it's the same as last working one */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3>{isCreating ? 'Add New' : 'Edit'} {activeTab === 'options' ? 'Product' : activeTab === 'items' ? 'Item' : 'Section'}</h3>
+              <button onClick={cancelEdit}><X size={22} /></button>
+            </div>
+
+            {/* Dynamic fields based on tab */}
+            {activeTab === 'options' && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Name / Label</label>
+                  <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+                </div>
+                {/* Assignment section */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Assigned to Items</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                    {assignedItems.map((a, idx) => (
+                      <div key={idx} style={{ background: '#f1f5f9', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {a.sched_items?.label}
+                        <button onClick={() => removeItemFromProduct(a.item_id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <select onChange={(e) => { if (e.target.value) addItemToProduct(e.target.value); e.target.value = ''; }} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                    <option value="">+ Assign to Item</option>
+                    {itemsList.filter(i => !assignedItems.some(a => a.item_id === i.id)).map(i => (
+                      <option key={i.id} value={i.id}>{i.label} {i.cbi_code ? `(${i.cbi_code})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Other fields for products */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Description / Details</label>
+                  <textarea value={editForm.detail || ''} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '90px' }} />
+                </div>
+                {/* Add the other link fields here if you want them */}
+              </>
+            )}
+
+            {activeTab === 'items' && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Label</label>
+                  <input value={editForm.label || ''} onChange={e => setEditForm({ ...editForm, label: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>CBI Code</label>
+                  <input value={editForm.cbi_code || ''} onChange={e => setEditForm({ ...editForm, cbi_code: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Section</label>
+                  <select value={editForm.section_id || ''} onChange={e => setEditForm({ ...editForm, section_id: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                    {sectionsList.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+
+            {activeTab === 'sections' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' }}>Section Name</label>
+                <input value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+              </div>
+            )}
+
+            <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
+              <button onClick={saveEdit} style={{ background: '#166534', color: 'white', padding: '12px 28px', borderRadius: '8px', border: 'none', fontWeight: '500' }}>
+                {isCreating ? 'Create' : 'Save Changes'}
+              </button>
+              <button onClick={cancelEdit} style={{ background: '#f3f4f6', color: '#374151', padding: '12px 28px', borderRadius: '8px', border: '1px solid #d1d5db' }}>Cancel</button>
+            </div>
           </div>
         </div>
       )}

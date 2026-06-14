@@ -20,9 +20,16 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     setLoading(true);
     try {
       if (activeTab === 'options') {
+        // This join is key for showing assigned items on cards
         const { data: rows } = await supabase
           .from('v_sched_master')
-          .select('*')
+          .select(`
+            *,
+            sched_item_option_assignments (
+              item_id,
+              sched_items (id, label, cbi_code)
+            )
+          `)
           .order('section_order, item_order');
         setData(rows || []);
       } else {
@@ -35,7 +42,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         .order('sort_order');
       setItemsList(items || []);
     } catch (e) {
-      console.error(e);
+      console.error('Load error:', e);
     } finally {
       setLoading(false);
     }
@@ -101,7 +108,7 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
       setEditingId(null);
       setIsCreating(false);
       setAssignedItems([]);
-      loadData(); // Refresh to show changes
+      loadData(); // Refresh with join
     } catch (e) {
       console.error(e);
       alert('Save failed: ' + e.message);

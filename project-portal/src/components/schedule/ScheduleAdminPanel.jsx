@@ -20,19 +20,14 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
     setLoading(true);
     try {
       if (activeTab === 'options') {
+        // Simple, reliable load first
         const { data: rows } = await supabase
           .from('v_sched_master')
-          .select(`
-            *,
-            sched_item_option_assignments (
-              item_id,
-              sched_items (id, label, cbi_code)
-            )
-          `)
+          .select('*')
           .order('section_order, item_order');
         setData(rows || []);
       } else {
-        setData([]); // Other tabs will be empty for now
+        setData([]);
       }
 
       const { data: items } = await supabase
@@ -134,7 +129,6 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
 
   if (loading) return <div style={{ padding: '80px', textAlign: 'center' }}>Loading...</div>;
 
-  // Other tabs placeholder
   if (activeTab !== 'options') {
     return (
       <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>
@@ -153,6 +147,8 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
         </button>
       </div>
 
+      {data.length === 0 && <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>No products found. Check your database.</div>}
+
       {data.map((row, index) => (
         <div key={index} style={{ padding: '18px 22px', border: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '14px', position: 'relative', background: '#fff' }}>
           <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px' }}>
@@ -163,10 +159,9 @@ export default function ScheduleAdminPanel({ activeTab = 'options' }) {
           <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px' }}>{row.option_label}</div>
           {row.detail && <div style={{ fontSize: '14px', color: '#475569', marginBottom: '12px' }}>{row.detail}</div>}
 
-          {/* Assigned Items - Improved display */}
           {row.sched_item_option_assignments && row.sched_item_option_assignments.length > 0 && (
             <div style={{ fontSize: '13px', color: '#166534', marginBottom: '10px', fontWeight: '500' }}>
-              Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label || 'Unknown Item').join(', ')}
+              Assigned to: {row.sched_item_option_assignments.map(a => a.sched_items?.label || 'Unknown').join(', ')}
             </div>
           )}
 

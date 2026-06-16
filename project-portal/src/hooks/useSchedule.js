@@ -1,158 +1,178 @@
 // ============================================================
-// useSchedule.js
+// src/hooks/useSchedule.js
 // Custom hook — loads and manages schedule state for a project.
 // Usage: const schedule = useSchedule(projectId)
+// Pass null as projectId to skip loading (tab not active yet).
+//
+// FIXES vs old version:
+//   - Removed query to non-existent view v_sched_project
+//   - Uses correct tables: sched_groups, sched_items,
+//     sched_item_products, sched_project_selections
+//   - Fixed duplicate return statement (was causing build error)
+//   - selectOption/updateNote now actually save to the database
+//   - Added stats for the progress bar in ScheduleTab
 // ============================================================
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect, useCallback } from 'react'
+import {
+  fetchGroups,
+  fetchItemsWithProducts,
+  fetchProjectSelections,
+  upsertProjectSelection,
+} from '../lib/scheduleQueries'
 
 export function useSchedule(projectId) {
-  const [itemsBySection, setItemsBySection] = useState([]);
-  const [selections, setSelections] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [groups,     setGroups]     = useState([])
+  const [items,      setItems]      = useState([])
+  const [selections, setSelections] = useState({})  // keyed by item_id
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(null)
+  const [saving,     setSaving]     = useState(false)
 
   const load = useCallback(async () => {
-    if (!projectId) return;
-
-    setLoading(true);
-    setError(null);
-
+    if (!projectId) { setLoading(false); return }
+    setLoading(true)
+    setError(null)
     try {
-      // Get all schedule data for this project (including new link fields)
-      const { data: projectData, error: projectError } = await supabase
-        .from('v_sched_project')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('section_order, item_order');
-
-      if (projectError) throw projectError;
-
-      // Group into sections → items → options (with links)
-      const grouped = (projectData || []).reduce((acc, row) => {
-        let section = acc.find(s => s.id === row.section_id);
-        if (!section) {
-          section = { id: row.section_id, name: row.section, items: [] };
-          acc.push(section);
-        }
-
-        let item = section.items.find(i => i.id === row.item_id);
-        if (!item) {
-          item = {
-            id: row.item_id,
-            label: row.item,
-            cbi_code: row.cbi_code,
-            options: []
-          };
-          section.items.push(item);
-        }
-
-        // Add option with all link fields
-        if (row.option_id) {
-          const existing = item.options.find(o => o.id === row.option_id);
-          if (!existing) {
-            item.options.push({
-              id: row.option_id,
-              label: row.option_label,
-              detail: row.detail,
-              warranty: row.warranty,
-              supplier: row.supplier,
-              product_link: row.product_link,
-              codemark_link: row.codemark_link,
-              branz_link: row.branz_link,
-              certificate_notes: row.certificate_notes
-            });
-          }
-        }
-
-        return acc;
-      }, []);
-
-      setItemsBySection(grouped);
-
-      // Load existing selections
-      const { data: selData } = await supabase
-        .from('sched_project_selections')
-        .select('*')
-        .eq('project_id', projectId);
-
-      const selMap = {};
-      (selData || []).forEach(s => {
-        selMap[s.item_id] = {
-          option_id: s.option_id,
-          status: s.status,
-          project_note: s.project_note
-        };
-      });
-      setSelections(selMap);
-
+      const [grps, itms, sels] = await Promise.all([
+        fetchGroups(),
+        fetchItemsWithProducts(),
+        fetchProjectSelections(projectId),
+      ])
+      setGroups(grps)
+      setItems(itms)
+      setSelections(sels)
     } catch (e) {
-      console.error(e);
-      setError(e.message);
+      console.error('useSchedule load error:', e)
+      setError(e.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [projectId]);
+  }, [projectId])
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load() }, [load])
 
-  // ... rest of your existing functions (selectOption, confirmSelection, updateNote, etc.) stay the same
-  const selectOption = useCallback(async (itemId, optionId) => {
-    setSelections(prev => ({
-      ...prev,
-      [itemId]: { ...prev[itemId], option_id: optionId }
-    }));
-  }, []);
+  // Items grouped by group for rendering
+  const itemsByGroup = groups.map(group => ({
+    ...group,
+    items: items.filter(i => i.group_id === group.id),
+  }))
 
-  const updateNote = useCallback(async (itemId, note) => {
-    setSelections(prev => ({
-      ...prev,
-      [itemId]: { ...prev[itemId], project_note: note }
-    }));
-  }, []);
-
-  const confirmSelection = useCallback(async (itemId) => {
-    const current = selections[itemId];
-    if (!current?.option_id) return;
-
+  // Select a product for an item and save to DB
+  const selectProduct = useCallback(async (itemId, productId) => {
+    setSaving(true)
     try {
-      await supabase
-        .from('sched_project_selections')
-        .upsert({
-          project_id: projectId,
-          item_id: itemId,
-          option_id: current.option_id,
-          status: 'confirmed',
-          project_note: current.project_note || null
-        }, { onConflict: 'project_id,item_id' });
-
-      // Refresh to get latest status
-      await load();
+      const existing = selections[itemId]
+      const updated = await upsertProjectSelection({
+        projectId,
+        itemId,
+        productId,
+        status:      productId ? 'specified' : 'tbc',
+        projectNote: existing?.project_note || null,
+      })
+      setSelections(prev => ({ ...prev, [itemId]: updated }))
     } catch (e) {
-      console.error(e);
-      alert('Failed to save selection');
+      console.error('selectProduct error:', e)
+      setError(e.message)
+    } finally {
+      setSaving(false)
     }
-  }, [selections, projectId, load]);
+  }, [projectId, selections])
+
+  // Update just the status and save to DB
+  const updateStatus = useCallback(async (itemId, status) => {
+    setSaving(true)
+    try {
+      const existing = selections[itemId]
+      const updated = await upsertProjectSelection({
+        projectId,
+        itemId,
+        productId:   existing?.product_id || null,
+        status,
+        projectNote: existing?.project_note || null,
+      })
+      setSelections(prev => ({ ...prev, [itemId]: updated }))
+    } catch (e) {
+      console.error('updateStatus error:', e)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [projectId, selections])
+
+  // Save a project note to DB
+  const updateNote = useCallback(async (itemId, note) => {
+    setSaving(true)
+    try {
+      const existing = selections[itemId]
+      const updated = await upsertProjectSelection({
+        projectId,
+        itemId,
+        productId:   existing?.product_id || null,
+        status:      existing?.status || 'tbc',
+        projectNote: note,
+      })
+      setSelections(prev => ({ ...prev, [itemId]: updated }))
+    } catch (e) {
+      console.error('updateNote error:', e)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [projectId, selections])
+
+  // Confirm a selection (sets status = 'confirmed')
+  const confirmSelection = useCallback(async (itemId) => {
+    const existing = selections[itemId]
+    if (!existing?.product_id) return
+    setSaving(true)
+    try {
+      const updated = await upsertProjectSelection({
+        projectId,
+        itemId,
+        productId:   existing.product_id,
+        status:      'confirmed',
+        projectNote: existing.project_note || null,
+      })
+      setSelections(prev => ({ ...prev, [itemId]: updated }))
+    } catch (e) {
+      console.error('confirmSelection error:', e)
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }, [projectId, selections])
+
+  // Completion stats for the progress bar
+  const stats = (() => {
+    const total     = items.length
+    const confirmed = items.filter(i => selections[i.id]?.status === 'confirmed').length
+    const specified = items.filter(i =>
+      ['specified', 'substituted'].includes(selections[i.id]?.status)
+    ).length
+    const tbc = total - confirmed - specified
+    return {
+      total,
+      confirmed,
+      specified,
+      tbc,
+      pct: total ? Math.round((confirmed / total) * 100) : 0,
+    }
+  })()
 
   return {
-    itemsBySection,
+    groups,
+    items,
+    itemsByGroup,
     selections,
+    stats,
     loading,
     error,
-    refresh: load,
-    selectOption,
+    saving,
+    reload: load,
+    selectProduct,
+    updateStatus,
     updateNote,
-    confirmSelection
-  };
-  return {
-    itemsBySection,
-    selections,
-    loading,
-    error,
-    refresh: load,
-    // include your other functions here
-  };
+    confirmSelection,
+  }
 }

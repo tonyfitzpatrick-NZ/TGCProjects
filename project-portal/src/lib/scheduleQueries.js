@@ -1,92 +1,95 @@
 // ============================================================
-// scheduleQueries.js
-// All Supabase queries for the schedule of finishes module.
-// Import supabase from your existing src/lib/supabase.js
+// src/lib/scheduleQueries.js
+// All Supabase queries for the Schedule of Finishes module.
+//
+// FIXES vs old version:
+//   - Uses shared supabase client (no env vars, works on Netlify)
+//   - Correct table names: sched_groups, sched_items,
+//     sched_products, sched_item_products, sched_project_selections
+//   - Removed references to non-existent tables:
+//     sched_sections, sched_item_options, sched_option_docs,
+//     sched_templates, v_sched_project
 // ============================================================
 
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from './supabase'
 
-const supabase = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SUPABASE_ANON_KEY
-)
+// ── Master library reads ─────────────────────────────────────
 
-// ── Master data ──────────────────────────────────────────────
-
-export async function fetchSections() {
+export async function fetchGroups() {
   const { data, error } = await supabase
-    .from('sched_sections')
+    .from('sched_groups')
     .select('*')
     .order('sort_order')
   if (error) throw error
-  return data
+  return data || []
 }
 
-export async function fetchItems() {
-  const { data, error } = await supabase
+export async function fetchItemsWithProducts() {
+  const { data: items, error: ie } = await supabase
     .from('sched_items')
+    .select('*')
+    .order('sort_order')
+  if (ie) throw ie
+
+  const { data: links, error: le } = await supabase
+    .from('sched_item_products')
     .select(`
       *,
-      sched_item_options (*)
+      sched_products (
+        id, name, manufacturer,
+        url_website, url_branz_appraisal,
+        url_codemark, url_install_manual
+      )
     `)
     .order('sort_order')
-  if (error) throw error
-  return data
+  if (le) throw le
+
+  // Attach assigned products to each item
+  const map = {}
+  ;(links || []).forEach(r => {
+    if (!map[r.item_id]) map[r.item_id] = []
+    map[r.item_id].push(r)
+  })
+
+  return (items || []).map(item => ({
+    ...item,
+    assignedProducts: map[item.id] || [],
+  }))
 }
 
-export async function fetchTemplates() {
-  const { data, error } = await supabase
-    .from('sched_templates')
-    .select('*')
-    .eq('is_active', true)
-    .order('name')
+export async function fetchProducts({ includeInactive = false } = {}) {
+  let q = supabase.from('sched_products').select('*').order('name')
+  if (!includeInactive) q = q.eq('is_active', true)
+  const { data, error } = await q
   if (error) throw error
-  return data
+  return data || []
 }
 
-export async function fetchOptionDocs(optionId) {
-  const { data, error } = await supabase
-    .from('sched_option_docs')
-    .select('*')
-    .eq('option_id', optionId)
-    .order('doc_type')
-  if (error) throw error
-  return data
-}
-
-// ── Project schedule ─────────────────────────────────────────
-
-export async function fetchProjectSchedule(projectId) {
-  const { data, error } = await supabase
-    .from('v_sched_project')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('section_order')
-  if (error) throw error
-  return data
-}
+// ── Project selections ───────────────────────────────────────
 
 export async function fetchProjectSelections(projectId) {
   const { data, error } = await supabase
     .from('sched_project_selections')
-    .select('*')
+    .select('*, sched_products(id, name, manufacturer)')
     .eq('project_id', projectId)
   if (error) throw error
   // Return as a map keyed by item_id for easy lookup
   return Object.fromEntries((data || []).map(s => [s.item_id, s]))
 }
 
-export async function upsertSelection({ projectId, itemId, optionId, status, projectNote }) {
+export async function upsertProjectSelection({
+  projectId, itemId, productId, status, projectNote,
+}) {
   const { data, error } = await supabase
     .from('sched_project_selections')
     .upsert(
       {
-        project_id: projectId,
-        item_id: itemId,
-        option_id: optionId || null,
-        status: status || 'specified',
+        project_id:   projectId,
+        item_id:      itemId,
+        product_id:   productId || null,
+        status:       status || 'tbc',
         project_note: projectNote || null,
-        updated_at: new Date().toISOString(),
+        updated_at:   new Date().toISOString(),
       },
       { onConflict: 'project_id,item_id' }
     )
@@ -96,74 +99,127 @@ export async function upsertSelection({ projectId, itemId, optionId, status, pro
   return data
 }
 
-export async function applyTemplate(projectId, templateId) {
-  // Update the project's template reference
-  const { error } = await supabase
-    .from('projects')
-    .update({ sched_template_id: templateId, sched_stage: 'design' })
-    .eq('id', projectId)
-  if (error) throw error
-}
+// ── Admin: groups ────────────────────────────────────────────
 
-// ── Admin: manage master data ────────────────────────────────
-
-export async function addItemOption({ itemId, label, detail, warranty, supplier, modelRef }) {
+export async function createGroup({ name, description, sort_order }) {
   const { data, error } = await supabase
-    .from('sched_item_options')
-    .insert({
-      item_id: itemId,
-      label,
-      detail,
-      warranty: warranty || '',
-      supplier: supplier || '',
-      model_ref: modelRef || '',
-      is_default: false,
-    })
+    .from('sched_groups')
+    .insert({ name, description: description || null, sort_order: sort_order || 0 })
     .select()
     .single()
   if (error) throw error
   return data
 }
 
-export async function updateItemOption(optionId, updates) {
+export async function updateGroup(id, updates) {
   const { data, error } = await supabase
-    .from('sched_item_options')
+    .from('sched_groups')
     .update(updates)
-    .eq('id', optionId)
+    .eq('id', id)
     .select()
     .single()
   if (error) throw error
   return data
 }
 
-export async function deleteItemOption(optionId) {
+export async function deleteGroup(id) {
   const { error } = await supabase
-    .from('sched_item_options')
+    .from('sched_groups')
     .delete()
-    .eq('id', optionId)
+    .eq('id', id)
   if (error) throw error
 }
 
-export async function addOptionDoc({ optionId, docType, title, url }) {
+// ── Admin: items ─────────────────────────────────────────────
+
+export async function createItem({ group_id, name, description, sort_order }) {
   const { data, error } = await supabase
-    .from('sched_option_docs')
-    .insert({
-      option_id: optionId,
-      doc_type: docType,
-      title,
-      url,
-      fetched_at: new Date().toISOString(),
-    })
+    .from('sched_items')
+    .insert({ group_id, name, description: description || null, sort_order: sort_order || 0 })
     .select()
     .single()
   if (error) throw error
   return data
 }
 
-export async function deleteOptionDoc(docId) {
-  const { error } = await supabase
-    .from('sched_option_docs')
-    .delete()
-    .eq('id', docId)
+export async function updateItem(id, updates) {
+  const { data, error } = await supabase
+    .from('sched_items')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
   if (error) throw error
+  return data
+}
+
+export async function deleteItem(id) {
+  const { error } = await supabase
+    .from('sched_items')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ── Admin: products ──────────────────────────────────────────
+
+export async function createProduct(payload) {
+  const { data, error } = await supabase
+    .from('sched_products')
+    .insert({ ...payload, is_active: true, updated_at: new Date().toISOString() })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateProduct(id, payload) {
+  const { data, error } = await supabase
+    .from('sched_products')
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteProduct(id) {
+  const { error } = await supabase
+    .from('sched_products')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ── Admin: item–product assignments ─────────────────────────
+
+export async function assignProductToItem({ item_id, product_id, is_default = false }) {
+  const { data, error } = await supabase
+    .from('sched_item_products')
+    .insert({ item_id, product_id, is_default })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function removeProductFromItem(item_id, product_id) {
+  const { error } = await supabase
+    .from('sched_item_products')
+    .delete()
+    .eq('item_id', item_id)
+    .eq('product_id', product_id)
+  if (error) throw error
+}
+
+export async function setDefaultProduct(itemProductId, isDefault) {
+  const { data, error } = await supabase
+    .from('sched_item_products')
+    .update({ is_default: isDefault })
+    .eq('id', itemProductId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }

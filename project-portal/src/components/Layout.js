@@ -3,7 +3,8 @@ import { useAuth } from '../hooks/useAuth'
 import logo from '../lib/logo'
 import {
   LayoutGrid, Clock, Bell, BookOpen,
-  Users, Settings, LogOut, CheckSquare, BarChart2, ClipboardList
+  Users, Settings, LogOut, CheckSquare, BarChart2, ClipboardList,
+  ListChecks
 } from 'lucide-react'
 
 const NAVY = '#1B2B4B'
@@ -70,6 +71,7 @@ export default function Layout({ children }) {
             <SectionLabel>Admin</SectionLabel>
             <NavItem icon={BarChart2} label="Consultant Report" path="/consultants" />
             <NavItem icon={ClipboardList} label="Application Templates" path="/admin/applications" />
+            <NavItem icon={ListChecks} label="Schedule Library" path="/admin/schedule" />
             <NavItem icon={Users} label="Users & Access" path="/admin/users" />
             <NavItem icon={Settings} label="Settings" path="/admin/settings" />
           </>}

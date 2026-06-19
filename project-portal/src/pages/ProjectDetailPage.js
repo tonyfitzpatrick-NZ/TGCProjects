@@ -15,8 +15,7 @@ import TasksPanel from '../components/TasksPanel'
 import DocumentRegister from '../components/DocumentRegister'
 import MessagesPanel from '../components/MessagesPanel'
 import ApplicationsPanel from '../components/ApplicationsPanel'
-import { ScheduleTab, ScheduleAdminPanel } from '../components/schedule'
-import { useSchedule } from '../hooks/useSchedule'
+import { ScheduleTab } from '../components/schedule'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -40,9 +39,9 @@ export default function ProjectDetailPage() {
   const isLead = isAdmin || members.find(m => m.user_id === profile?.id)?.role === 'lead'
   const scheduleUserRole = isAdmin ? 'admin' : isLead ? 'lead' : 'consultant'
 
-  // Schedule hook — only active when schedule tab is open to avoid
-  // unnecessary queries on every project page load
-  const scheduleData = useSchedule(tab === 'schedule' ? id : null)
+  // Note: the master Schedule of Finishes library (groups, items,
+  // products) is now managed centrally under Settings → Schedule
+  // of Finishes, not per-project, so no schedule data is loaded here.
 
   useEffect(() => { fetchAll() }, [id])
 
@@ -297,26 +296,32 @@ export default function ProjectDetailPage() {
             userRole={scheduleUserRole}
           />
 
-          {/* Admin panel — admins only, below the schedule */}
+          {/* Admin note — master library now lives in Settings */}
           {isAdmin && (
-            <>
-              <div style={{
-                margin: '32px 0 16px',
-                paddingTop: '24px',
-                borderTop: '1px dashed #e2e8f0',
-                fontSize: '11px',
-                fontWeight: '500',
-                color: '#94a3b8',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em'
-              }}>
-                Admin — master schedule management
-              </div>
-              <ScheduleAdminPanel
-                itemsBySection={scheduleData.itemsBySection}
-                onOptionsChanged={scheduleData.reload}
-              />
-            </>
+            <div style={{
+              marginTop: '28px',
+              padding: '14px 16px',
+              borderTop: '1px dashed #ECEAE4',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontSize: '12px',
+              color: '#aaa',
+            }}>
+              <span>
+                Need to add or edit groups, items, or products in the master Schedule of Finishes?
+              </span>
+              <button
+                onClick={() => navigate('/admin/schedule')}
+                style={{
+                  fontSize: '12px', color: '#1B2B4B', background: 'none',
+                  border: '1px solid #D0CEC6', borderRadius: '7px',
+                  padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit',
+                  fontWeight: '500', flexShrink: 0,
+                }}>
+                Go to master library →
+              </button>
+            </div>
           )}
         </div>
       )}

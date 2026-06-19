@@ -18,10 +18,33 @@ export default function TasksAdminPage() {
 
   async function fetchTasks() {
     setLoading(true)
-    const { data } = await supabase.from('tasks')
-      .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles(id,full_name), depends_on_task:tasks(id,title,status)')
+    const { data, error } = await supabase.from('tasks')
+      .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles(id,full_name)')
       .order('deadline', { ascending: true, nullsFirst: false })
-    setTasks(data || [])
+    if (error) console.error('fetchTasks error:', error)
+
+    const rawTasks = data || []
+
+    // Resolve "depends_on" -> task title/status without an embedded
+    // self-join (see TasksPanel.js for why — self-referencing joins
+    // on 'tasks' can fail the whole query silently in PostgREST).
+    const byId = {}
+    rawTasks.forEach(t => { byId[t.id] = t })
+    const missingIds = [...new Set(
+      rawTasks.map(t => t.depends_on).filter(id => id && !byId[id])
+    )]
+    if (missingIds.length > 0) {
+      const { data: extra, error: extraErr } = await supabase
+        .from('tasks').select('id,title,status').in('id', missingIds)
+      if (extraErr) console.error('fetchTasks depends_on lookup error:', extraErr)
+      ;(extra || []).forEach(t => { byId[t.id] = t })
+    }
+    const tasksWithDeps = rawTasks.map(t => ({
+      ...t,
+      depends_on_task: t.depends_on ? byId[t.depends_on] || null : null
+    }))
+
+    setTasks(tasksWithDeps)
     setLoading(false)
   }
 

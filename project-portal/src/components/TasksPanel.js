@@ -23,13 +23,41 @@ export default function TasksPanel({ projectId, isLead }) {
     setLoading(true)
     const [tRes, cRes, uRes] = await Promise.all([
       supabase.from('tasks')
-        .select('*, assigned_company:companies(id,name), assigned_user:profiles(id,full_name,avatar_initials), depends_on_task:tasks(id,title,status)')
+        .select('*, assigned_company:companies(id,name), assigned_user:profiles(id,full_name,avatar_initials)')
         .eq('project_id', projectId)
         .order('created_at'),
       supabase.from('companies').select('id,name,discipline').order('name'),
       supabase.from('profiles').select('id,full_name,avatar_initials,company_id').order('full_name')
     ])
-    setTasks(tRes.data || [])
+    if (tRes.error) console.error('fetchAll tasks error:', tRes.error)
+    if (cRes.error) console.error('fetchAll companies error:', cRes.error)
+    if (uRes.error) console.error('fetchAll users error:', uRes.error)
+
+    const rawTasks = tRes.data || []
+
+    // Resolve "depends_on" -> task title/status without an embedded
+    // self-join (PostgREST self-referencing joins on a table with
+    // multiple FKs to itself can be ambiguous and fail the whole
+    // query silently). Most dependencies point to another task in
+    // this same project, so we can resolve from what we already have;
+    // for any that don't, fetch just those few rows separately.
+    const byId = {}
+    rawTasks.forEach(t => { byId[t.id] = t })
+    const missingIds = [...new Set(
+      rawTasks.map(t => t.depends_on).filter(id => id && !byId[id])
+    )]
+    if (missingIds.length > 0) {
+      const { data: extra, error: extraErr } = await supabase
+        .from('tasks').select('id,title,status').in('id', missingIds)
+      if (extraErr) console.error('fetchAll depends_on lookup error:', extraErr)
+      ;(extra || []).forEach(t => { byId[t.id] = t })
+    }
+    const tasksWithDeps = rawTasks.map(t => ({
+      ...t,
+      depends_on_task: t.depends_on ? byId[t.depends_on] || null : null
+    }))
+
+    setTasks(tasksWithDeps)
     setCompanies(cRes.data || [])
     setUsers(uRes.data || [])
     setLoading(false)

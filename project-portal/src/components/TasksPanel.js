@@ -16,6 +16,7 @@ export default function TasksPanel({ projectId, isLead }) {
   const [editingTask, setEditingTask] = useState(null)
   const [groupBy, setGroupBy] = useState('stage')
   const [collapsed, setCollapsed] = useState({})
+  const [fetchError, setFetchError] = useState(null)
 
   useEffect(() => { fetchAll() }, [projectId])
 
@@ -23,13 +24,18 @@ export default function TasksPanel({ projectId, isLead }) {
     setLoading(true)
     const [tRes, cRes, uRes] = await Promise.all([
       supabase.from('tasks')
-        .select('*, assigned_company:companies(id,name), assigned_user:profiles(id,full_name,avatar_initials)')
+        .select('*, assigned_company:companies(id,name), assigned_user:profiles!tasks_assigned_user_id_fkey(id,full_name,avatar_initials)')
         .eq('project_id', projectId)
         .order('created_at'),
       supabase.from('companies').select('id,name,discipline').order('name'),
       supabase.from('profiles').select('id,full_name,avatar_initials,company_id').order('full_name')
     ])
-    if (tRes.error) console.error('fetchAll tasks error:', tRes.error)
+    if (tRes.error) {
+      console.error('fetchAll tasks error:', tRes.error)
+      setFetchError(`Tasks query failed: ${tRes.error.message}${tRes.error.hint ? ' — Hint: ' + tRes.error.hint : ''}${tRes.error.details ? ' — Details: ' + tRes.error.details : ''}${tRes.error.code ? ' (code ' + tRes.error.code + ')' : ''}`)
+    } else {
+      setFetchError(null)
+    }
     if (cRes.error) console.error('fetchAll companies error:', cRes.error)
     if (uRes.error) console.error('fetchAll users error:', uRes.error)
 
@@ -103,6 +109,15 @@ export default function TasksPanel({ projectId, isLead }) {
 
   return (
     <div>
+      {fetchError && (
+        <div style={{
+          background: '#FAECE7', color: '#993C1D', fontSize: '12px',
+          padding: '10px 12px', borderRadius: '8px', marginBottom: '14px',
+          fontFamily: 'monospace', lineHeight: '1.6', wordBreak: 'break-word'
+        }}>
+          {fetchError}
+        </div>
+      )}
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
         <div style={{ fontSize: '13px', color: '#aaa', flex: 1 }}>

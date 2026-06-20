@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 import { Check, Settings, Calendar } from 'lucide-react';
+import ScheduleAdminPanel from '../components/schedule/ScheduleAdminPanel';
 
 export default function SettingsPage() {
   const { profile } = useAuth();
-  const navigate = useNavigate();
   const isAdmin = profile?.role === 'admin';
 
   const [fullName, setFullName] = useState(profile?.full_name || '');
@@ -100,21 +100,10 @@ export default function SettingsPage() {
 
         {activeTab === 'schedule-admin' && isAdmin && (
           <div>
-            <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Schedule of Finishes — Master Admin</h2>
-            <button
-              onClick={() => navigate('/admin/schedule')}
-              style={{
-                padding: '14px 28px',
-                background: '#1B2B4B',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '16px',
-                cursor: 'pointer'
-              }}
-            >
-              Open Full Schedule Admin Panel →
-            </button>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', marginBottom: '16px', letterSpacing: '-0.01em' }}>
+              Schedule of Finishes — Master Library
+            </h2>
+            <ScheduleAdminPanel />
           </div>
         )}
       </div>

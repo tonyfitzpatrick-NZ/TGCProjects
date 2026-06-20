@@ -12,6 +12,7 @@ export default function TasksAdminPage() {
   const [filterStatus, setFilterStatus] = useState('All')
   const [filterStage, setFilterStage] = useState('All')
   const [sortBy, setSortBy] = useState('deadline')
+  const [fetchError, setFetchError] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => { fetchTasks() }, [])
@@ -19,9 +20,14 @@ export default function TasksAdminPage() {
   async function fetchTasks() {
     setLoading(true)
     const { data, error } = await supabase.from('tasks')
-      .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles(id,full_name)')
+      .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles!tasks_assigned_user_id_fkey(id,full_name)')
       .order('deadline', { ascending: true, nullsFirst: false })
-    if (error) console.error('fetchTasks error:', error)
+    if (error) {
+      console.error('fetchTasks error:', error)
+      setFetchError(`Tasks query failed: ${error.message}${error.hint ? ' — Hint: ' + error.hint : ''}${error.details ? ' — Details: ' + error.details : ''}${error.code ? ' (code ' + error.code + ')' : ''}`)
+    } else {
+      setFetchError(null)
+    }
 
     const rawTasks = data || []
 
@@ -96,6 +102,16 @@ export default function TasksAdminPage() {
           <input style={S.searchInput} placeholder="Search tasks, projects, companies…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
+
+      {fetchError && (
+        <div style={{
+          background: '#FAECE7', color: '#993C1D', fontSize: '12px',
+          padding: '10px 20px', fontFamily: 'monospace', lineHeight: '1.6',
+          wordBreak: 'break-word'
+        }}>
+          {fetchError}
+        </div>
+      )}
 
       {/* Stats bar */}
       <div style={{ padding: '10px 20px', borderBottom: '0.5px solid #ECEAE4', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>

@@ -40,6 +40,15 @@ export default function AdminUsersPage() {
   }
 
   async function updateUserRole(id, role) {
+    if (role === 'company_admin') {
+      const target = users.find(u => u.id === id)
+      if (!target?.company_id) {
+        const proceed = window.confirm(
+          `${target?.full_name || 'This user'} doesn't have a company assigned yet, so Company Admin won't grant them any extra access until you assign one. Set the role anyway?`
+        )
+        if (!proceed) return
+      }
+    }
     await supabase.from('profiles').update({ role }).eq('id', id)
     fetchAll()
   }
@@ -188,7 +197,7 @@ export default function AdminUsersPage() {
 
 function UserRow({ user, companies, isAdmin, profileId, onRoleChange, onCompanyChange, onEdit }) {
   const init = user.avatar_initials || user.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
-  const roleColors = { admin: ['#FAECE7', '#993C1D'], project_lead: ['#EEEDFE', '#534AB7'], consultant: ['#E1F5EE', '#0F6E56'] }
+  const roleColors = { admin: ['#FAECE7', '#993C1D'], project_lead: ['#EEEDFE', '#534AB7'], company_admin: ['#FAEEDA', '#854F0B'], consultant: ['#E1F5EE', '#0F6E56'] }
   const [bg, color] = roleColors[user.role] || roleColors.consultant
   return (
     <div style={S.userRow}>
@@ -205,8 +214,13 @@ function UserRow({ user, companies, isAdmin, profileId, onRoleChange, onCompanyC
       </span>
       {isAdmin && user.id !== profileId && (
         <>
-          <select value={user.role} onChange={e => onRoleChange(user.id, e.target.value)} style={S.select}>
+          <select
+            value={user.role}
+            onChange={e => onRoleChange(user.id, e.target.value)}
+            style={S.select}
+            title="Consultant: standard access. Company Admin: can also manage their own company's users, company details, and see all of their company's projects. Project lead / Admin: full in-house access.">
             <option value="consultant">Consultant</option>
+            <option value="company_admin">Company Admin</option>
             <option value="project_lead">Project lead</option>
             <option value="admin">Admin</option>
           </select>

@@ -4,7 +4,7 @@ import { Building2, Plus, ToggleLeft, ToggleRight, ChevronDown, ChevronRight } f
 import { Modal } from './NewProjectModal'
 import { useAuth } from '../hooks/useAuth'
 
-export default function CompanyAccessPanel({ projectId, isLead }) {
+export default function CompanyAccessPanel({ projectId, isLead, onChange = () => {} }) {
   const [companyAccess, setCompanyAccess] = useState([])
   const [allCompanies, setAllCompanies] = useState([])
   const [loading, setLoading] = useState(true)
@@ -26,15 +26,25 @@ export default function CompanyAccessPanel({ projectId, isLead }) {
     setLoading(false)
   }
 
+  // Wraps fetchAll + notifies the parent (e.g. ProjectDetailPage)
+  // that company access changed, so it can refresh anything that
+  // depends on "who can see this project" — like the message
+  // recipient picker — without this component needing to know
+  // about that use case directly.
+  async function fetchAllAndNotify() {
+    await fetchAll()
+    onChange()
+  }
+
   async function toggleAccess(accessId, current) {
     await supabase.from('project_company_access').update({ access_enabled: !current }).eq('id', accessId)
-    fetchAll()
+    fetchAllAndNotify()
   }
 
   async function removeCompany(accessId) {
     if (!window.confirm('Remove this company from the project? All their members will lose access.')) return
     await supabase.from('project_company_access').delete().eq('id', accessId)
-    fetchAll()
+    fetchAllAndNotify()
   }
 
   const assignedIds = companyAccess.map(ca => ca.company_id)
@@ -108,7 +118,7 @@ export default function CompanyAccessPanel({ projectId, isLead }) {
           available={available}
           projectId={projectId}
           onClose={() => setShowAdd(false)}
-          onAdded={fetchAll}
+          onAdded={fetchAllAndNotify}
         />
       )}
     </div>

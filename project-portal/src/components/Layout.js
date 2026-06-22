@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useNavBadges } from '../hooks/useNavBadges'
 import logo from '../lib/logo'
 import {
   LayoutGrid, Clock, Bell, BookOpen,
@@ -14,13 +16,21 @@ export default function Layout({ children }) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { hasNewMessages, hasNewTasks, markSeen } = useNavBadges(profile?.id)
 
   const isAdmin = profile?.role === 'admin'
   const isLead = isAdmin || profile?.role === 'project_lead'
   const initials = profile?.avatar_initials ||
     profile?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
 
-  function NavItem({ icon: Icon, label, path }) {
+  // Mark an area as seen the moment the user actually lands on
+  // its page — clears the badge as soon as they're looking at it.
+  useEffect(() => {
+    if (location.pathname === '/notifications') markSeen('messages')
+    if (location.pathname === '/tasks') markSeen('tasks')
+  }, [location.pathname, markSeen])
+
+  function NavItem({ icon: Icon, label, path, showBadge }) {
     const active = location.pathname === path
     return (
       <div onClick={() => navigate(path)} style={{
@@ -36,7 +46,14 @@ export default function Layout({ children }) {
         onMouseLeave={e => { e.currentTarget.style.background = active ? 'rgba(184,149,42,0.15)' : 'transparent'; e.currentTarget.style.color = active ? GOLD : 'rgba(255,255,255,0.65)' }}
       >
         <Icon size={15} strokeWidth={1.8} />
-        {label}
+        <span style={{ flex: 1 }}>{label}</span>
+        {showBadge && (
+          <span style={{
+            width: '7px', height: '7px', borderRadius: '50%',
+            background: '#E85D5D', flexShrink: 0,
+            boxShadow: '0 0 0 2px rgba(27,43,75,1)',
+          }} />
+        )}
       </div>
     )
   }
@@ -60,9 +77,9 @@ export default function Layout({ children }) {
         <div style={{ flex: 1, paddingTop: '8px', overflowY: 'auto' }}>
           <SectionLabel>Workspace</SectionLabel>
           <NavItem icon={LayoutGrid} label="All Projects" path="/" />
-          <NavItem icon={CheckSquare} label="Tasks" path="/tasks" />
+          <NavItem icon={CheckSquare} label="Tasks" path="/tasks" showBadge={hasNewTasks} />
           <NavItem icon={Clock} label="Deadlines" path="/deadlines" />
-          <NavItem icon={Bell} label="Notifications" path="/notifications" />
+          <NavItem icon={Bell} label="Notifications" path="/notifications" showBadge={hasNewMessages} />
 
           <SectionLabel>Documents</SectionLabel>
           <NavItem icon={BookOpen} label="Document Register" path="/documents" />

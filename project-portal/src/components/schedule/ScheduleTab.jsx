@@ -79,13 +79,7 @@ export default function ScheduleTab({ projectId, userRole }) {
     </div>
   )
 
-  if (error) return (
-    <div style={{ padding: '16px', background: '#FAECE7', color: '#993C1D', borderRadius: '10px', fontSize: '13px' }}>
-      Error loading schedule: {error}
-    </div>
-  )
-
-  if (itemsByGroup.length === 0) return (
+  if (itemsByGroup.length === 0 && !error) return (
     <div style={{ padding: '60px', textAlign: 'center', color: '#ccc', fontSize: '14px' }}>
       No schedule items set up yet. An admin can add groups and items via the Schedule Library.
     </div>
@@ -93,6 +87,18 @@ export default function ScheduleTab({ projectId, userRole }) {
 
   return (
     <div>
+      {/* Error banner — shown for load errors AND mutation errors
+          (e.g. a confirm/select click that failed), since this is
+          the only place the user would ever see what went wrong */}
+      {error && (
+        <div style={{
+          padding: '10px 14px', background: '#FAECE7', color: '#993C1D',
+          borderRadius: '8px', marginBottom: '16px', fontSize: '12px',
+          fontFamily: 'monospace', lineHeight: '1.6', wordBreak: 'break-word'
+        }}>
+          {error}
+        </div>
+      )}
       {/* Stats bar */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
         {[

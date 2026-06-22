@@ -17,7 +17,7 @@
 // ============================================================
 
 import { useState, useMemo } from 'react'
-import { Search, Loader, CheckCircle, ExternalLink, Plus, X } from 'lucide-react'
+import { Search, Loader, CheckCircle, ExternalLink, Plus, X, Lock } from 'lucide-react'
 import { useSchedule } from '../../hooks/useSchedule'
 
 const NAVY = '#1B2B4B'
@@ -43,6 +43,7 @@ export default function ScheduleTab({ projectId, userRole }) {
     selectProduct,
     deselectProduct,
     updateNote,
+    updateStatus,
     confirmSelection,
   } = useSchedule(projectId)
 
@@ -179,6 +180,7 @@ export default function ScheduleTab({ projectId, userRole }) {
                       onSelectProduct={selectProduct}
                       onDeselectProduct={deselectProduct}
                       onUpdateNote={updateNote}
+                      onUpdateStatus={updateStatus}
                       onConfirm={confirmSelection}
                     />
                   ))}
@@ -197,7 +199,7 @@ export default function ScheduleTab({ projectId, userRole }) {
 // on/off), and below it, one expandable row per currently
 // selected product with its own status/note/confirm.
 
-function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectProduct, onUpdateNote, onConfirm }) {
+function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectProduct, onUpdateNote, onUpdateStatus, onConfirm }) {
   const [open, setOpen] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
 
@@ -272,6 +274,7 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
                   canEdit={canEdit}
                   onDeselect={() => onDeselectProduct(item.id, sel.product_id)}
                   onUpdateNote={note => onUpdateNote(item.id, sel.product_id, note)}
+                  onUpdateStatus={newStatus => onUpdateStatus(item.id, sel.product_id, newStatus)}
                   onConfirm={() => onConfirm(item.id, sel.product_id)}
                 />
               ))}
@@ -350,13 +353,19 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
 
 // ── One selected product's own card (status/note/confirm) ──────
 
-function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNote, onConfirm }) {
-  const [note,   setNote]   = useState(selection.project_note || '')
-  const [saving, setSaving] = useState(false)
+function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNote, onUpdateStatus, onConfirm }) {
+  const [note,     setNote]     = useState(selection.project_note || '')
+  const [saving,   setSaving]   = useState(false)
+  const [unlocked, setUnlocked] = useState(false)
 
   const product = selection.sched_products
   const status = selection.status || 'specified'
   const isConfirmed = status === 'confirmed'
+  // Editing controls show whenever the item isn't confirmed, OR
+  // it's confirmed but has been deliberately unlocked — confirming
+  // something shouldn't permanently lock it, since circumstances
+  // on a project can change and a decision may need revisiting.
+  const showControls = canEdit && (!isConfirmed || unlocked)
   const sc = STATUS_COLORS[status] || STATUS_COLORS.specified
 
   async function handleSaveNote() {
@@ -366,11 +375,11 @@ function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNot
   }
 
   return (
-    <div style={{ background: isConfirmed ? '#E6F5EF' : '#fff', border: `1px solid ${isConfirmed ? '#BFE6D5' : BORDER}`, borderRadius: '8px', padding: '12px 14px' }}>
+    <div style={{ background: isConfirmed && !unlocked ? '#E6F5EF' : '#fff', border: `1px solid ${isConfirmed && !unlocked ? '#BFE6D5' : BORDER}`, borderRadius: '8px', padding: '12px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: isConfirmed ? '#0F6E56' : '#1a1a1a' }}>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: isConfirmed && !unlocked ? '#0F6E56' : '#1a1a1a' }}>
               {isConfirmed && '✓ '}{product?.name}
             </span>
             <span style={{ fontSize: '10px', fontWeight: '500', padding: '2px 8px', borderRadius: '20px', background: sc.bg, color: sc.color }}>
@@ -378,7 +387,7 @@ function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNot
             </span>
           </div>
           {product?.manufacturer && (
-            <div style={{ fontSize: '12px', color: isConfirmed ? '#0F6E56' : '#888', marginTop: '2px' }}>{product.manufacturer}</div>
+            <div style={{ fontSize: '12px', color: isConfirmed && !unlocked ? '#0F6E56' : '#888', marginTop: '2px' }}>{product.manufacturer}</div>
           )}
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
             {product?.url_website         && <DocLink href={product.url_website}         label="Website" />}
@@ -388,7 +397,17 @@ function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNot
           </div>
         </div>
 
-        {canEdit && !isConfirmed && (
+        {/* Confirmed + locked: show a small Unlock button instead
+            of the remove button, so editing a confirmed item is a
+            deliberate two-step action rather than accidental */}
+        {canEdit && isConfirmed && !unlocked && (
+          <button onClick={() => setUnlocked(true)} title="Unlock to change this product, status, or note"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fff', border: `1px solid #BFE6D5`, borderRadius: '6px', padding: '4px 9px', cursor: 'pointer', color: '#0F6E56', fontSize: '11px', fontFamily: 'inherit', flexShrink: 0 }}>
+            <Lock size={10} /> Unlock to edit
+          </button>
+        )}
+
+        {showControls && (
           <button onClick={onDeselect} title="Remove this product from the item"
                   style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: '#bbb', flexShrink: 0 }}>
             <X size={12} />
@@ -396,8 +415,25 @@ function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNot
         )}
       </div>
 
-      {/* Note */}
-      {canEdit && !isConfirmed && (
+      {/* Unlocked-but-confirmed notice + status override */}
+      {canEdit && isConfirmed && unlocked && (
+        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', color: '#854F0B', background: '#FFF4E0', padding: '6px 10px', borderRadius: '6px' }}>
+          <span style={{ flex: 1 }}>Circumstances changed? Update the status if this is no longer confirmed.</span>
+          <select
+            value={status}
+            onChange={e => onUpdateStatus(e.target.value)}
+            style={{ fontSize: '11px', padding: '3px 6px', borderRadius: '5px', border: '1px solid #F0D9A8', background: '#fff', fontFamily: 'inherit', color: '#854F0B', cursor: 'pointer' }}>
+            <option value="confirmed">Confirmed</option>
+            <option value="specified">Specified</option>
+            <option value="substituted">Substituted</option>
+            <option value="tbc">TBC</option>
+            <option value="not_applicable">Not applicable</option>
+          </select>
+        </div>
+      )}
+
+      {/* Note + status controls */}
+      {showControls && (
         <div style={{ marginTop: '10px' }}>
           <textarea
             value={note}
@@ -412,11 +448,20 @@ function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNot
               style={{ padding: '5px 12px', background: '#fff', color: NAVY, border: `1px solid ${BORDER}`, borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', opacity: (saving || note === (selection.project_note || '')) ? 0.5 : 1 }}>
               {saving ? 'Saving…' : 'Save note'}
             </button>
-            <button
-              onClick={onConfirm}
-              style={{ padding: '5px 14px', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
-              ✓ Confirm
-            </button>
+            {!isConfirmed && (
+              <button
+                onClick={onConfirm}
+                style={{ padding: '5px 14px', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
+                ✓ Confirm
+              </button>
+            )}
+            {isConfirmed && unlocked && (
+              <button
+                onClick={() => setUnlocked(false)}
+                style={{ padding: '5px 14px', background: '#fff', color: '#888', border: `1px solid ${BORDER}`, borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Done editing — re-lock
+              </button>
+            )}
           </div>
         </div>
       )}

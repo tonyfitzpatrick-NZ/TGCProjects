@@ -67,36 +67,60 @@ export async function fetchProducts({ includeInactive = false } = {}) {
 
 // ── Project selections ───────────────────────────────────────
 
+// Returns selections keyed by item_id, where each value is an
+// ARRAY of selection rows — an item can now have multiple
+// products selected, each with its own status and note.
 export async function fetchProjectSelections(projectId) {
   const { data, error } = await supabase
     .from('sched_project_selections')
-    .select('*, sched_products(id, name, manufacturer)')
+    .select('*, sched_products(id, name, manufacturer, url_website, url_branz_appraisal, url_codemark, url_install_manual)')
     .eq('project_id', projectId)
   if (error) throw error
-  // Return as a map keyed by item_id for easy lookup
-  return Object.fromEntries((data || []).map(s => [s.item_id, s]))
+  const byItem = {}
+  ;(data || []).forEach(s => {
+    if (!byItem[s.item_id]) byItem[s.item_id] = []
+    byItem[s.item_id].push(s)
+  })
+  return byItem
 }
 
+// Adds or updates a single product's selection on an item.
+// productId is required — a selection row always represents one
+// specific product chosen for one item; to remove a product from
+// an item's selections entirely, use deleteProjectSelection.
 export async function upsertProjectSelection({
   projectId, itemId, productId, status, projectNote,
 }) {
+  if (!productId) throw new Error('upsertProjectSelection requires a productId')
   const { data, error } = await supabase
     .from('sched_project_selections')
     .upsert(
       {
         project_id:   projectId,
         item_id:      itemId,
-        product_id:   productId || null,
-        status:       status || 'tbc',
+        product_id:   productId,
+        status:       status || 'specified',
         project_note: projectNote || null,
         updated_at:   new Date().toISOString(),
       },
-      { onConflict: 'project_id,item_id' }
+      { onConflict: 'project_id,item_id,product_id' }
     )
-    .select()
+    .select('*, sched_products(id, name, manufacturer, url_website, url_branz_appraisal, url_codemark, url_install_manual)')
     .single()
   if (error) throw error
   return data
+}
+
+// Removes one product's selection from an item entirely
+// (e.g. unchecking it in the picker).
+export async function deleteProjectSelection({ projectId, itemId, productId }) {
+  const { error } = await supabase
+    .from('sched_project_selections')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('item_id', itemId)
+    .eq('product_id', productId)
+  if (error) throw error
 }
 
 // ── Admin: groups ────────────────────────────────────────────

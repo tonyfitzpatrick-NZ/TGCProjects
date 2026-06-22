@@ -5,20 +5,19 @@
 //   projectId — uuid of the current project
 //   userRole  — 'admin' | 'lead' | 'consultant'
 //
-// FIXES vs old version:
-//   - Uses itemsByGroup (not itemsBySection — didn't exist)
-//   - Uses selectProduct (not selectOption)
-//   - Uses item.name (not item.label)
-//   - Uses item.assignedProducts (not item.options)
-//   - Uses product.name (not option.label)
-//   - Removed dependency on ScheduleSection/ScheduleItem components
-//     (both used old field names — everything is inline here now)
-//   - Added stats bar and progress display
-//   - Added confirm button and document links
+// Multi-select update:
+//   - An item can have MULTIPLE products selected (e.g. Entry
+//     Door needs both a Door and a Door Lock), each with its
+//     own independent status/note/confirm.
+//   - The picker is now a checklist (toggle any number of
+//     products on/off) instead of a single-choice radio list.
+//   - Each selected product shows as its own row below the
+//     picker, with its own status badge, note field, and
+//     confirm/unlock controls.
 // ============================================================
 
 import { useState, useMemo } from 'react'
-import { Search, Loader, CheckCircle, ExternalLink } from 'lucide-react'
+import { Search, Loader, CheckCircle, ExternalLink, Plus, X } from 'lucide-react'
 import { useSchedule } from '../../hooks/useSchedule'
 
 const NAVY = '#1B2B4B'
@@ -42,6 +41,7 @@ export default function ScheduleTab({ projectId, userRole }) {
     error,
     saving,
     selectProduct,
+    deselectProduct,
     updateNote,
     confirmSelection,
   } = useSchedule(projectId)
@@ -168,9 +168,10 @@ export default function ScheduleTab({ projectId, userRole }) {
                     <ItemRow
                       key={item.id}
                       item={item}
-                      selection={selections[item.id]}
+                      itemSelections={selections[item.id] || []}
                       canEdit={canEdit}
                       onSelectProduct={selectProduct}
+                      onDeselectProduct={deselectProduct}
                       onUpdateNote={updateNote}
                       onConfirm={confirmSelection}
                     />
@@ -186,33 +187,24 @@ export default function ScheduleTab({ projectId, userRole }) {
 }
 
 // ── Single item row ───────────────────────────────────────────
+// Shows a checklist of assignable products (toggle any number
+// on/off), and below it, one expandable row per currently
+// selected product with its own status/note/confirm.
 
-function ItemRow({ item, selection, canEdit, onSelectProduct, onUpdateNote, onConfirm }) {
-  const [open,   setOpen]   = useState(false)
-  const [note,   setNote]   = useState(selection?.project_note || '')
-  const [saving, setSaving] = useState(false)
+function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectProduct, onUpdateNote, onConfirm }) {
+  const [open, setOpen] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
 
-  // Keep note in sync if parent selection changes
-  useState(() => { setNote(selection?.project_note || '') }, [selection?.project_note])
+  const selectedIds = itemSelections.map(s => s.product_id)
+  const allConfirmed = itemSelections.length > 0 && itemSelections.every(s => s.status === 'confirmed')
+  const anyConfirmed = itemSelections.some(s => s.status === 'confirmed')
 
-  const selectedProductId = selection?.product_id
-  const status            = selection?.status || 'tbc'
-  const isConfirmed       = status === 'confirmed'
-  const sc                = STATUS_COLORS[status] || STATUS_COLORS.tbc
-
-  // Find the selected product object
-  const selectedProduct = item.assignedProducts
-    .find(p => p.product_id === selectedProductId)?.sched_products
-
-  // Fallback: find default product for display when nothing selected
-  const defaultProduct = item.assignedProducts
-    .find(p => p.is_default)?.sched_products
-
-  async function handleSaveNote() {
-    setSaving(true)
-    await onUpdateNote(item.id, note)
-    setSaving(false)
-  }
+  // Overall badge for the collapsed row: confirmed only if every
+  // selected product is confirmed; otherwise show count selected.
+  const overallStatus = itemSelections.length === 0
+    ? 'tbc'
+    : allConfirmed ? 'confirmed' : 'specified'
+  const sc = STATUS_COLORS[overallStatus] || STATUS_COLORS.tbc
 
   return (
     <div style={{ border: `1px solid ${BORDER}`, borderRadius: '9px', overflow: 'hidden' }}>
@@ -223,7 +215,7 @@ function ItemRow({ item, selection, canEdit, onSelectProduct, onUpdateNote, onCo
         style={{
           display: 'flex', alignItems: 'center', gap: '12px',
           padding: '11px 14px', cursor: 'pointer',
-          background: isConfirmed ? '#F6FBF9' : '#fff',
+          background: allConfirmed ? '#F6FBF9' : '#fff',
         }}>
 
         {/* Item name */}
@@ -234,157 +226,198 @@ function ItemRow({ item, selection, canEdit, onSelectProduct, onUpdateNote, onCo
           )}
         </div>
 
-        {/* Selected/default product preview */}
+        {/* Selected products preview */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '12px', color: selectedProduct ? '#444' : '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {selectedProduct
-              ? <>
-                  {selectedProduct.name}
-                  {selectedProduct.manufacturer && <span style={{ color: '#aaa' }}> — {selectedProduct.manufacturer}</span>}
-                </>
-              : defaultProduct
-                ? <span style={{ color: '#aaa' }}>{defaultProduct.name} (default)</span>
-                : 'Not selected'
-            }
-          </div>
+          {itemSelections.length === 0 ? (
+            <span style={{ fontSize: '12px', color: '#ccc' }}>Not selected</span>
+          ) : (
+            <div style={{ fontSize: '12px', color: '#444', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {itemSelections.map(s => s.sched_products?.name).filter(Boolean).join(' + ')}
+            </div>
+          )}
         </div>
 
         {/* Status badge */}
         <span style={{ flexShrink: 0, fontSize: '11px', fontWeight: '500', padding: '3px 9px', borderRadius: '20px', background: sc.bg, color: sc.color }}>
-          {status === 'not_applicable' ? 'N/A' : status.charAt(0).toUpperCase() + status.slice(1)}
+          {itemSelections.length === 0
+            ? 'TBC'
+            : allConfirmed
+              ? 'Confirmed'
+              : `${itemSelections.filter(s => s.status === 'confirmed').length}/${itemSelections.length} confirmed`}
         </span>
 
-        {/* Confirmed tick */}
-        {isConfirmed && <CheckCircle size={14} color="#1D9E75" style={{ flexShrink: 0 }} />}
+        {allConfirmed && <CheckCircle size={14} color="#1D9E75" style={{ flexShrink: 0 }} />}
 
         <span style={{ color: '#ccc', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
       </div>
 
       {/* Expanded panel */}
       {open && (
-        <div style={{ borderTop: `1px solid ${BORDER}`, padding: '14px 16px', background: '#FAFAF8', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ borderTop: `1px solid ${BORDER}`, padding: '14px 16px', background: '#FAFAF8', display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-          {/* Product picker — editable and not yet confirmed */}
-          {canEdit && !isConfirmed && (
-            <div>
-              <SectionLabel>Select product</SectionLabel>
-              {item.assignedProducts.length === 0 ? (
-                <div style={{ fontSize: '12px', color: '#ccc' }}>
-                  No products assigned to this item. Add them via Admin → Schedule Library.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {item.assignedProducts.map(ip => {
-                    const p = ip.sched_products
-                    const isSelected = selectedProductId === ip.product_id
-                    return (
-                      <button
-                        key={ip.id}
-                        onClick={() => onSelectProduct(item.id, ip.product_id)}
-                        style={{
-                          display: 'flex', alignItems: 'flex-start', gap: '10px',
-                          padding: '10px 12px', textAlign: 'left', fontFamily: 'inherit',
-                          border: `2px solid ${isSelected ? NAVY : BORDER}`,
-                          borderRadius: '8px',
-                          background: isSelected ? '#EEF1F6' : '#fff',
-                          cursor: 'pointer',
-                        }}>
-                        {/* Radio dot */}
-                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${isSelected ? NAVY : '#D0CEC6'}`, background: isSelected ? NAVY : '#fff', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {isSelected && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{p?.name}</div>
-                          {p?.manufacturer && <div style={{ fontSize: '11px', color: '#888' }}>{p.manufacturer}</div>}
-                          {ip.is_default && (
-                            <span style={{ fontSize: '10px', background: '#F0E8D0', color: '#7A5C10', padding: '1px 6px', borderRadius: '10px', fontWeight: '500', marginTop: '4px', display: 'inline-block' }}>
-                              Default
-                            </span>
-                          )}
-                          {/* Document links */}
-                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
-                            {p?.url_website         && <DocLink href={p.url_website}         label="Website" />}
-                            {p?.url_branz_appraisal && <DocLink href={p.url_branz_appraisal} label="BRANZ" />}
-                            {p?.url_codemark        && <DocLink href={p.url_codemark}         label="CodeMark" />}
-                            {p?.url_install_manual  && <DocLink href={p.url_install_manual}   label="Install Manual" />}
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+          {/* Currently selected products — each its own row */}
+          {itemSelections.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {itemSelections.map(sel => (
+                <SelectedProductCard
+                  key={sel.product_id}
+                  item={item}
+                  selection={sel}
+                  canEdit={canEdit}
+                  onDeselect={() => onDeselectProduct(item.id, sel.product_id)}
+                  onUpdateNote={note => onUpdateNote(item.id, sel.product_id, note)}
+                  onConfirm={() => onConfirm(item.id, sel.product_id)}
+                />
+              ))}
             </div>
           )}
 
-          {/* Confirmed view — read-only product summary */}
-          {isConfirmed && selectedProduct && (
-            <div style={{ background: '#E6F5EF', borderRadius: '8px', padding: '12px 14px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#0F6E56', marginBottom: '4px' }}>
-                ✓ Confirmed: {selectedProduct.name}
-              </div>
-              {selectedProduct.manufacturer && (
-                <div style={{ fontSize: '12px', color: '#0F6E56', marginBottom: '8px' }}>
-                  {selectedProduct.manufacturer}
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                {selectedProduct.url_website         && <DocLink href={selectedProduct.url_website}         label="Website" />}
-                {selectedProduct.url_branz_appraisal && <DocLink href={selectedProduct.url_branz_appraisal} label="BRANZ" />}
-                {selectedProduct.url_codemark        && <DocLink href={selectedProduct.url_codemark}         label="CodeMark" />}
-                {selectedProduct.url_install_manual  && <DocLink href={selectedProduct.url_install_manual}   label="Install Manual" />}
-              </div>
-            </div>
-          )}
-
-          {/* Project note */}
+          {/* Add product picker — editable only */}
           {canEdit && (
             <div>
-              <SectionLabel>Project note</SectionLabel>
-              <textarea
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="Add a project-specific note or substitution detail…"
-                style={{ width: '100%', padding: '9px 10px', border: `1px solid #D0CEC6`, borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', minHeight: '64px', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
-              />
-              <button
-                onClick={handleSaveNote}
-                disabled={saving || note === (selection?.project_note || '')}
-                style={{ marginTop: '6px', padding: '6px 14px', background: NAVY, color: '#fff', border: 'none', borderRadius: '7px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', opacity: (saving || note === (selection?.project_note || '')) ? 0.5 : 1 }}>
-                {saving ? 'Saving…' : 'Save note'}
-              </button>
+              {!showPicker ? (
+                <button
+                  onClick={() => setShowPicker(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'transparent', border: `1px dashed #D0CEC6`, borderRadius: '8px', fontSize: '12px', color: NAVY, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Plus size={12} /> {itemSelections.length > 0 ? 'Add another product' : 'Select product'}
+                </button>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                    <SectionLabel>Choose product(s) for this item</SectionLabel>
+                    <button onClick={() => setShowPicker(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#aaa' }}>
+                      <X size={13} />
+                    </button>
+                  </div>
+                  {item.assignedProducts.length === 0 ? (
+                    <div style={{ fontSize: '12px', color: '#ccc' }}>
+                      No products assigned to this item. Add them via Admin → Schedule Library.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {item.assignedProducts.map(ip => {
+                        const p = ip.sched_products
+                        const isSelected = selectedIds.includes(ip.product_id)
+                        return (
+                          <button
+                            key={ip.id}
+                            onClick={() => isSelected ? onDeselectProduct(item.id, ip.product_id) : onSelectProduct(item.id, ip.product_id)}
+                            style={{
+                              display: 'flex', alignItems: 'flex-start', gap: '10px',
+                              padding: '10px 12px', textAlign: 'left', fontFamily: 'inherit',
+                              border: `2px solid ${isSelected ? NAVY : BORDER}`,
+                              borderRadius: '8px',
+                              background: isSelected ? '#EEF1F6' : '#fff',
+                              cursor: 'pointer',
+                            }}>
+                            {/* Checkbox (not radio — multiple can be selected) */}
+                            <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: `2px solid ${isSelected ? NAVY : '#D0CEC6'}`, background: isSelected ? NAVY : '#fff', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isSelected && <CheckCircle size={11} color="#fff" style={{ strokeWidth: 3 }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{p?.name}</div>
+                              {p?.manufacturer && <div style={{ fontSize: '11px', color: '#888' }}>{p.manufacturer}</div>}
+                              {ip.is_default && (
+                                <span style={{ fontSize: '10px', background: '#F0E8D0', color: '#7A5C10', padding: '1px 6px', borderRadius: '10px', fontWeight: '500', marginTop: '4px', display: 'inline-block' }}>
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Read-only note for consultants */}
-          {!canEdit && selection?.project_note && (
-            <div>
-              <SectionLabel>Project note</SectionLabel>
-              <div style={{ fontSize: '13px', color: '#444', background: '#fff', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${BORDER}` }}>
-                {selection.project_note}
-              </div>
-            </div>
+          {itemSelections.length === 0 && !canEdit && (
+            <div style={{ fontSize: '12px', color: '#ccc' }}>No product selected yet.</div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
 
-          {/* Confirm button */}
-          {canEdit && !isConfirmed && selectedProductId && (
-            <div>
-              <button
-                onClick={() => onConfirm(item.id)}
-                style={{ padding: '9px 20px', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
-                ✓ Confirm selection
-              </button>
-            </div>
+// ── One selected product's own card (status/note/confirm) ──────
+
+function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNote, onConfirm }) {
+  const [note,   setNote]   = useState(selection.project_note || '')
+  const [saving, setSaving] = useState(false)
+
+  const product = selection.sched_products
+  const status = selection.status || 'specified'
+  const isConfirmed = status === 'confirmed'
+  const sc = STATUS_COLORS[status] || STATUS_COLORS.specified
+
+  async function handleSaveNote() {
+    setSaving(true)
+    await onUpdateNote(note)
+    setSaving(false)
+  }
+
+  return (
+    <div style={{ background: isConfirmed ? '#E6F5EF' : '#fff', border: `1px solid ${isConfirmed ? '#BFE6D5' : BORDER}`, borderRadius: '8px', padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: isConfirmed ? '#0F6E56' : '#1a1a1a' }}>
+              {isConfirmed && '✓ '}{product?.name}
+            </span>
+            <span style={{ fontSize: '10px', fontWeight: '500', padding: '2px 8px', borderRadius: '20px', background: sc.bg, color: sc.color }}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>
+          </div>
+          {product?.manufacturer && (
+            <div style={{ fontSize: '12px', color: isConfirmed ? '#0F6E56' : '#888', marginTop: '2px' }}>{product.manufacturer}</div>
           )}
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
+            {product?.url_website         && <DocLink href={product.url_website}         label="Website" />}
+            {product?.url_branz_appraisal && <DocLink href={product.url_branz_appraisal} label="BRANZ" />}
+            {product?.url_codemark        && <DocLink href={product.url_codemark}         label="CodeMark" />}
+            {product?.url_install_manual  && <DocLink href={product.url_install_manual}   label="Install Manual" />}
+          </div>
+        </div>
 
-          {/* Unlock confirmed item */}
-          {canEdit && isConfirmed && (
+        {canEdit && !isConfirmed && (
+          <button onClick={onDeselect} title="Remove this product from the item"
+                  style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: '#bbb', flexShrink: 0 }}>
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* Note */}
+      {canEdit && !isConfirmed && (
+        <div style={{ marginTop: '10px' }}>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Add a project-specific note or substitution detail…"
+            style={{ width: '100%', padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '12px', fontFamily: 'inherit', resize: 'vertical', minHeight: '50px', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+          />
+          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
             <button
-              onClick={() => onSelectProduct(item.id, null)}
-              style={{ alignSelf: 'flex-start', padding: '6px 14px', background: 'transparent', color: '#888', border: `1px solid ${BORDER}`, borderRadius: '7px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>
-              Unlock to change
+              onClick={handleSaveNote}
+              disabled={saving || note === (selection.project_note || '')}
+              style={{ padding: '5px 12px', background: '#fff', color: NAVY, border: `1px solid ${BORDER}`, borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', opacity: (saving || note === (selection.project_note || '')) ? 0.5 : 1 }}>
+              {saving ? 'Saving…' : 'Save note'}
             </button>
-          )}
+            <button
+              onClick={onConfirm}
+              style={{ padding: '5px 14px', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
+              ✓ Confirm
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!canEdit && selection.project_note && (
+        <div style={{ marginTop: '8px', fontSize: '12px', color: '#444', background: '#fff', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${BORDER}` }}>
+          {selection.project_note}
         </div>
       )}
     </div>
@@ -408,7 +441,7 @@ function DocLink({ href, label }) {
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ fontSize: '11px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+    <div style={{ fontSize: '11px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
       {children}
     </div>
   )

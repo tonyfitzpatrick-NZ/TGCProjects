@@ -61,6 +61,7 @@ export default function ScheduleTab({ projectId, userRole }) {
         items: group.items.filter(item =>
           item.name.toLowerCase().includes(q) ||
           (item.description || '').toLowerCase().includes(q) ||
+          (item.cbi_code || '').toLowerCase().includes(q) ||
           item.assignedProducts.some(p =>
             (p.sched_products?.name || '').toLowerCase().includes(q) ||
             (p.sched_products?.manufacturer || '').toLowerCase().includes(q)
@@ -126,7 +127,7 @@ export default function ScheduleTab({ projectId, userRole }) {
       <div style={{ position: 'relative', marginBottom: '20px', maxWidth: '480px' }}>
         <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#aaa', pointerEvents: 'none' }} />
         <input
-          placeholder="Search items or products…"
+          placeholder="Search items, CBI codes, or products…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ width: '100%', padding: '9px 12px 9px 34px', border: `1px solid #D0CEC6`, borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
@@ -228,7 +229,14 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
 
         {/* Item name */}
         <div style={{ flex: '0 0 200px', minWidth: 0 }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{item.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{item.name}</span>
+            {item.cbi_code && (
+              <span style={{ fontSize: '9px', fontFamily: 'monospace', color: '#7A5C10', background: '#F0E8D0', padding: '1px 5px', borderRadius: '3px', flexShrink: 0 }}>
+                {item.cbi_code}
+              </span>
+            )}
+          </div>
           {item.description && (
             <div style={{ fontSize: '11px', color: '#aaa' }}>{item.description}</div>
           )}

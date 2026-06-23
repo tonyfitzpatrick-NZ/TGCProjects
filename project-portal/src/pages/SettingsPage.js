@@ -1,21 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { Check, Settings, Calendar } from 'lucide-react';
-import ScheduleAdminPanel from '../components/schedule/ScheduleAdminPanel';
+import { Check } from 'lucide-react';
 
 export default function SettingsPage() {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
 
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [company, setCompany] = useState(profile?.company || '');
+  const [companyName, setCompanyName] = useState(null);  // read-only, derived from profile.company_id
   const [initials, setInitials] = useState(profile?.avatar_initials || '');
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('profile');
+  // Company affiliation is read-only here — it's managed by an
+  // admin via Users & Access, not self-service. Look up the real
+  // company name from profile.company_id rather than the old
+  // free-text field, which no longer exists on profiles.
+  useEffect(() => {
+    if (!profile?.company_id) { setCompanyName(null); return; }
+    supabase.from('companies').select('name').eq('id', profile.company_id).single()
+      .then(({ data }) => setCompanyName(data?.name || null));
+  }, [profile?.company_id]);
 
   async function saveProfile(e) {
     e.preventDefault();
@@ -25,7 +32,6 @@ export default function SettingsPage() {
 
     const { error } = await supabase.from('profiles').update({
       full_name: fullName, 
-      company, 
       avatar_initials: initials || fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     }).eq('id', profile.id);
 
@@ -42,70 +48,43 @@ export default function SettingsPage() {
         <div style={S.title}>Settings {isAdmin && '— Admin'}</div>
       </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid #ECEAE4' }}>
-        <button
-          onClick={() => setActiveTab('profile')}
-          style={{ ...S.tabBtn, background: activeTab === 'profile' ? '#fff' : 'transparent', fontWeight: activeTab === 'profile' ? '600' : '400' }}
-        >
-          <Settings size={16} /> My Profile
-        </button>
-
-        {isAdmin && (
-          <button
-            onClick={() => setActiveTab('schedule-admin')}
-            style={{ ...S.tabBtn, background: activeTab === 'schedule-admin' ? '#fff' : 'transparent', fontWeight: activeTab === 'schedule-admin' ? '600' : '400' }}
-          >
-            <Calendar size={16} /> Schedule of Finishes
-          </button>
-        )}
-      </div>
-
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-        {activeTab === 'profile' && (
-          <div style={{ maxWidth: '520px' }}>
-            <div style={S.card}>
-              <div style={S.cardTitle}>Your profile</div>
-              <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <Field label="Full name">
-                  <input style={S.input} value={fullName} onChange={e => setFullName(e.target.value)} />
-                </Field>
-                <Field label="Company / organisation">
-                  <input style={S.input} value={company} onChange={e => setCompany(e.target.value)} placeholder="e.g. Morrison & Partners" />
-                </Field>
-                <Field label="Avatar initials (2 letters)">
-                  <input style={{ ...S.input, width: '80px' }} value={initials} onChange={e => setInitials(e.target.value.slice(0, 2).toUpperCase())} placeholder="TF" maxLength={2} />
-                </Field>
-                <Field label="Role">
-                  <div style={{ ...S.input, background: '#F5F5F5', color: '#888', textTransform: 'capitalize' }}>
-                    {profile?.role?.replace('_', ' ')}
-                  </div>
-                </Field>
-
-                {profileError && <div style={S.error}>{profileError}</div>}
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button type="submit" style={S.btnPrimary} disabled={loading}>
-                    {loading ? 'Saving…' : 'Save profile'}
-                  </button>
-                  {profileSaved && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#0F6E56', fontSize: '13px' }}>
-                      <Check size={14} /> Saved
-                    </div>
-                  )}
+        <div style={{ maxWidth: '520px' }}>
+          <div style={S.card}>
+            <div style={S.cardTitle}>Your profile</div>
+            <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <Field label="Full name">
+                <input style={S.input} value={fullName} onChange={e => setFullName(e.target.value)} />
+              </Field>
+              <Field label="Company / organisation">
+                <div style={{ ...S.input, background: '#F5F5F5', color: '#888' }}>
+                  {companyName || 'TGC Homes (in-house)'}
                 </div>
-              </form>
-            </div>
-          </div>
-        )}
+              </Field>
+              <Field label="Avatar initials (2 letters)">
+                <input style={{ ...S.input, width: '80px' }} value={initials} onChange={e => setInitials(e.target.value.slice(0, 2).toUpperCase())} placeholder="TF" maxLength={2} />
+              </Field>
+              <Field label="Role">
+                <div style={{ ...S.input, background: '#F5F5F5', color: '#888', textTransform: 'capitalize' }}>
+                  {profile?.role?.replace('_', ' ')}
+                </div>
+              </Field>
 
-        {activeTab === 'schedule-admin' && isAdmin && (
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', marginBottom: '16px', letterSpacing: '-0.01em' }}>
-              Schedule of Finishes — Master Library
-            </h2>
-            <ScheduleAdminPanel />
+              {profileError && <div style={S.error}>{profileError}</div>}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button type="submit" style={S.btnPrimary} disabled={loading}>
+                  {loading ? 'Saving…' : 'Save profile'}
+                </button>
+                {profileSaved && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#0F6E56', fontSize: '13px' }}>
+                    <Check size={14} /> Saved
+                  </div>
+                )}
+              </div>
+            </form>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -128,14 +107,4 @@ const S = {
   input: { padding: '8px 10px', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#FAFAF8', fontFamily: 'inherit', color: '#1a1a1a', width: '100%', boxSizing: 'border-box' },
   error: { background: '#FAECE7', color: '#993C1D', fontSize: '13px', padding: '10px 12px', borderRadius: '8px' },
   btnPrimary: { padding: '8px 18px', background: '#1B2B4B', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' },
-  tabBtn: { 
-    padding: '14px 24px', 
-    border: 'none', 
-    background: 'transparent', 
-    cursor: 'pointer', 
-    fontSize: '15px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px'
-  }
 };

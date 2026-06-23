@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { format, isPast, differenceInDays, parseISO } from 'date-fns'
-import { Search, ChevronRight, AlertTriangle, Clock, CheckCircle, Circle, Download } from 'lucide-react'
+import { Search, ChevronRight, ChevronDown, AlertTriangle, Clock, CheckCircle, Circle, Download, Building2 } from 'lucide-react'
 
 // Engagement status logic
 function getEngagementStatus(m) {
@@ -65,6 +65,7 @@ export default function ConsultantReportPage() {
   const [filterStatus, setFilterStatus] = useState('All')
   const [filterProject, setFilterProject] = useState('All')
   const [projects, setProjects] = useState([])
+  const [expanded, setExpanded] = useState({})
   const navigate = useNavigate()
 
   useEffect(() => { fetchAll() }, [])
@@ -96,16 +97,44 @@ export default function ConsultantReportPage() {
     return matchStatus && matchProject && matchSearch
   })
 
-  // Sort: overdue first, then by deadline
-  const sorted = [...filtered].sort((a, b) => {
-    const sa = getEngagementStatus(a)
-    const sb = getEngagementStatus(b)
-    if (sa.priority !== sb.priority) return sa.priority - sb.priority
-    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline)
-    if (a.deadline) return -1
-    if (b.deadline) return 1
-    return 0
+  // Within-group sort: overdue first, then by deadline — exactly
+  // the same urgency logic as before, just applied per company
+  // instead of across the whole list.
+  function sortByUrgency(list) {
+    return [...list].sort((a, b) => {
+      const sa = getEngagementStatus(a)
+      const sb = getEngagementStatus(b)
+      if (sa.priority !== sb.priority) return sa.priority - sb.priority
+      if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline)
+      if (a.deadline) return -1
+      if (b.deadline) return 1
+      return 0
+    })
+  }
+
+  // Group by company name, alphabetical, with consultants who
+  // have no company assigned collected into their own section
+  // at the end (not alphabetically interleaved).
+  const NO_COMPANY_LABEL = 'No company assigned'
+  const groupsMap = {}
+  filtered.forEach(m => {
+    const companyName = m.profiles?.companies?.name || NO_COMPANY_LABEL
+    if (!groupsMap[companyName]) groupsMap[companyName] = []
+    groupsMap[companyName].push(m)
   })
+  const companyNames = Object.keys(groupsMap)
+    .filter(name => name !== NO_COMPANY_LABEL)
+    .sort((a, b) => a.localeCompare(b))
+  if (groupsMap[NO_COMPANY_LABEL]) companyNames.push(NO_COMPANY_LABEL)
+
+  const groupedSections = companyNames.map(name => ({
+    name,
+    members: sortByUrgency(groupsMap[name]),
+  }))
+
+  function toggleGroup(name) {
+    setExpanded(e => ({ ...e, [name]: e[name] === false ? true : false }))
+  }
 
   // Stats
   const stats = {
@@ -179,7 +208,7 @@ export default function ConsultantReportPage() {
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
         {loading ? (
           <div style={{ padding: '60px', textAlign: 'center', color: '#aaa' }}>Loading report…</div>
-        ) : sorted.length === 0 ? (
+        ) : groupedSections.length === 0 ? (
           <div style={{ padding: '60px', textAlign: 'center', color: '#aaa' }}>No consultants match your filters.</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
@@ -190,15 +219,51 @@ export default function ConsultantReportPage() {
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {sorted.map(m => {
-                const status = getEngagementStatus(m)
-                const init = m.profiles?.avatar_initials ||
-                  m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
-                const isOverdue = status.label === 'Overdue'
-                const dlColor = isOverdue ? '#A32D2D' : status.label === 'Due soon' ? '#854F0B' : '#444'
+            {groupedSections.map(group => {
+              const isOpen = expanded[group.name] !== false
+              return (
+                <tbody key={group.name}>
+                  {/* Company group header — spans all columns, click to collapse/expand */}
+                  <tr
+                    onClick={() => toggleGroup(group.name)}
+                    style={{ background: '#FBFAF7', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#F3F1EB'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#FBFAF7'}>
+                    <td colSpan={10} style={{ padding: '9px 10px', borderBottom: '0.5px solid #ECEAE4', borderTop: '0.5px solid #ECEAE4' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {isOpen ? <ChevronDown size={13} color="#aaa" /> : <ChevronRight size={13} color="#aaa" />}
+                        <Building2 size={13} color="#B8952A" />
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#1a1a1a' }}>{group.name}</span>
+                        <span style={{ fontSize: '11px', color: '#aaa' }}>
+                          {group.members.length} {group.members.length === 1 ? 'consultant' : 'consultants'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
 
-                return (
+                  {isOpen && group.members.map(m => (
+                    <ConsultantRow key={m.id} member={m} navigate={navigate} />
+                  ))}
+                </tbody>
+              )
+            })}
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── One consultant row — unchanged rendering, just extracted so
+// it can be reused inside each company's group ──────────────────
+function ConsultantRow({ member: m, navigate }) {
+  const status = getEngagementStatus(m)
+  const init = m.profiles?.avatar_initials ||
+    m.profiles?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
+  const isOverdue = status.label === 'Overdue'
+  const dlColor = isOverdue ? '#A32D2D' : status.label === 'Due soon' ? '#854F0B' : '#444'
+
+  return (
                   <tr key={m.id}
                     style={{ background: isOverdue ? '#FFFAFA' : 'transparent', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = isOverdue ? '#FFF0F0' : '#FAFAF8'}
@@ -254,12 +319,5 @@ export default function ConsultantReportPage() {
                       <ChevronRight size={14} />
                     </td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
   )
 }

@@ -433,9 +433,37 @@ function EditApplicationModal({ app, onClose, onSaved }) {
 // ── NEW CUSTOM APPLICATION MODAL ──────────────────────────────
 function NewApplicationModal({ projectId, onClose, onSaved }) {
   const [form, setForm] = useState({ name: '', agency: '', agency_website: '', stage: '', description: '' })
+  const [templates, setTemplates] = useState([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+
+  useEffect(() => {
+    supabase.from('application_templates')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+      .order('name')
+      .then(({ data }) => setTemplates(data || []))
+  }, [])
+
+  function applyTemplate(templateId) {
+    setSelectedTemplateId(templateId)
+    if (!templateId) return
+    const t = templates.find(t => t.id === templateId)
+    if (!t) return
+    // Pre-fills the form — still fully editable before saving,
+    // doesn't add the application immediately.
+    setForm({
+      name: t.name || '',
+      agency: t.agency || '',
+      agency_website: t.agency_website || '',
+      stage: t.stage || '',
+      description: t.description || '',
+    })
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -446,12 +474,41 @@ function NewApplicationModal({ projectId, onClose, onSaved }) {
       status: 'Not Required', is_required: false, is_custom: true, sort_order: 999
     })
     if (err) { setError(err.message); setLoading(false); return }
+
+    // Optionally save this as a reusable template for future
+    // projects too — a separate insert, doesn't block the
+    // application itself from being added even if this fails.
+    if (saveAsTemplate) {
+      const { error: templateErr } = await supabase.from('application_templates').insert({
+        name: form.name, description: form.description || null,
+        agency: form.agency || null, agency_website: form.agency_website || null,
+        stage: form.stage || null, is_active: true, sort_order: 999
+      })
+      if (templateErr) {
+        // The application itself was already saved successfully —
+        // don't block on this, just let the user know the template
+        // part didn't save.
+        setError(`Application added, but saving as a template failed: ${templateErr.message}`)
+        setLoading(false)
+        onSaved()
+        return
+      }
+    }
+
     onSaved(); onClose()
   }
 
   return (
     <Modal title="Add application" onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {templates.length > 0 && (
+          <Field label="Start from a template (optional)">
+            <select style={S.input} value={selectedTemplateId} onChange={e => applyTemplate(e.target.value)}>
+              <option value="">Choose a template, or fill in manually below…</option>
+              {templates.map(t => <option key={t.id} value={t.id}>{t.name}{t.agency ? ` — ${t.agency}` : ''}</option>)}
+            </select>
+          </Field>
+        )}
         <Field label="Application name *">
           <input style={S.input} value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Heritage NZ Approval" required autoFocus />
         </Field>
@@ -472,6 +529,10 @@ function NewApplicationModal({ projectId, onClose, onSaved }) {
         <Field label="Description">
           <textarea style={{ ...S.input, minHeight: '60px', resize: 'vertical' }} value={form.description} onChange={e => set('description', e.target.value)} />
         </Field>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
+          <input type="checkbox" checked={saveAsTemplate} onChange={e => setSaveAsTemplate(e.target.checked)} />
+          Also save this as a reusable template for future projects
+        </label>
         {error && <div style={S.error}>{error}</div>}
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={S.btnSec}>Cancel</button>

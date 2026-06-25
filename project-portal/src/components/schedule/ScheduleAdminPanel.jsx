@@ -165,10 +165,10 @@ function GroupsTab({ groups, items, products, reload, setError }) {
     setSaving(true)
     try {
       if (editItem.id) {
-        await updateItem(editItem.id, { name: editItem.name, description: editItem.description || null, sort_order: Number(editItem.sort_order) || 0, cbi_code: editItem.cbi_code || null })
+        await updateItem(editItem.id, { name: editItem.name, description: editItem.description || null, sort_order: Number(editItem.sort_order) || 0, cbi_code: editItem.cbi_code || null, exclude_from_spec: !!editItem.exclude_from_spec })
       } else {
         const groupItems = items.filter(i => i.group_id === editItem.group_id)
-        await createItem({ group_id: editItem.group_id, name: editItem.name, description: editItem.description || null, sort_order: Number(editItem.sort_order) || groupItems.length, cbi_code: editItem.cbi_code || null })
+        await createItem({ group_id: editItem.group_id, name: editItem.name, description: editItem.description || null, sort_order: Number(editItem.sort_order) || groupItems.length, cbi_code: editItem.cbi_code || null, exclude_from_spec: !!editItem.exclude_from_spec })
       }
       setEditItem(null)
       await reload()
@@ -297,13 +297,18 @@ function GroupsTab({ groups, items, products, reload, setError }) {
                                     CBI {item.cbi_code}
                                   </span>
                                 )}
+                                {item.exclude_from_spec && (
+                                  <span style={{ fontSize: '10px', color: '#993C1D', background: '#FAECE7', padding: '1px 6px', borderRadius: '4px' }}>
+                                    Excluded from spec
+                                  </span>
+                                )}
                               </div>
                               {item.description && <div style={{ fontSize: '11px', color: '#aaa' }}>{item.description}</div>}
                             </div>
                             <span style={{ fontSize: '11px', color: item.assignedProducts.length ? '#888' : '#ccc' }}>
                               {item.assignedProducts.length} {item.assignedProducts.length === 1 ? 'product' : 'products'}
                             </span>
-                            <IconBtn icon={<Edit2 size={12}/>} onClick={e => { e.stopPropagation(); setEditItem({ id: item.id, group_id: item.group_id, name: item.name, description: item.description || '', sort_order: item.sort_order, cbi_code: item.cbi_code || '' }) }} title="Edit item" />
+                            <IconBtn icon={<Edit2 size={12}/>} onClick={e => { e.stopPropagation(); setEditItem({ id: item.id, group_id: item.group_id, name: item.name, description: item.description || '', sort_order: item.sort_order, cbi_code: item.cbi_code || '', exclude_from_spec: !!item.exclude_from_spec }) }} title="Edit item" />
                             <IconBtn icon={<Trash2 size={12}/>} onClick={e => { e.stopPropagation(); handleDeleteItem(item.id, item.name) }} title="Delete item" danger />
                           </div>
 
@@ -365,7 +370,7 @@ function GroupsTab({ groups, items, products, reload, setError }) {
                   <ItemForm value={editItem} groups={groups} onChange={setEditItem} onSave={saveItem} onCancel={() => setEditItem(null)} saving={saving} />
                 ) : (
                   <button
-                    onClick={() => setEditItem({ name: '', description: '', group_id: group.id, sort_order: groupItems.length, cbi_code: '' })}
+                    onClick={() => setEditItem({ name: '', description: '', group_id: group.id, sort_order: groupItems.length, cbi_code: '', exclude_from_spec: false })}
                     style={{ fontSize: '12px', color: NAVY, background: 'none', border: `1px dashed ${BORDER}`, borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
                     <Plus size={11}/> Add item
                   </button>
@@ -405,6 +410,10 @@ function ItemForm({ value, groups, onChange, onSave, onCancel, saving }) {
           {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
       )}
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#444', cursor: 'pointer' }}>
+        <input type="checkbox" checked={!!value.exclude_from_spec} onChange={e => onChange(v => ({ ...v, exclude_from_spec: e.target.checked }))} />
+        Exclude from generated specification
+      </label>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={onSave} disabled={saving || !value.name?.trim()} style={btnSave}>{saving ? 'Saving…' : value.id ? 'Save changes' : 'Add item'}</button>
         <button onClick={onCancel} style={btnCancel}>Cancel</button>
@@ -423,7 +432,7 @@ function ProductsTab({ groups, items, products, reload, setError }) {
   const [saving,   setSaving]   = useState(false)
   const [showAll,  setShowAll]  = useState(false)
 
-  const EMPTY = { name: '', manufacturer: '', url_website: '', url_branz_appraisal: '', url_codemark: '', url_install_manual: '', is_active: true, assignedItemIds: [] }
+  const EMPTY = { name: '', manufacturer: '', url_website: '', url_branz_appraisal: '', url_codemark: '', url_install_manual: '', is_active: true, needs_own_spec_section: false, assignedItemIds: [] }
 
   // Build: item -> [products assigned to it], and the set of
   // product ids that are assigned to at least one item.
@@ -458,6 +467,7 @@ function ProductsTab({ groups, items, products, reload, setError }) {
         url_codemark: editing.url_codemark || null,
         url_install_manual: editing.url_install_manual || null,
         is_active: editing.is_active !== false,
+        needs_own_spec_section: !!editing.needs_own_spec_section,
       }
       let productId = editing.id
       if (productId) {
@@ -569,6 +579,7 @@ function ProductRow({ product: p, onEdit, onDelete }) {
         <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>
           {p.name}
           {!p.is_active && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#aaa', background: '#F0EFEF', padding: '1px 6px', borderRadius: '10px' }}>Inactive</span>}
+          {p.needs_own_spec_section && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#534AB7', background: '#EEEDFE', padding: '1px 6px', borderRadius: '10px' }}>Own spec section</span>}
         </div>
         {p.manufacturer && <div style={{ fontSize: '12px', color: '#888' }}>{p.manufacturer}</div>}
         <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
@@ -608,6 +619,10 @@ function ProductForm({ value, items, groups, onChange, onSave, onCancel, saving 
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
         <input type="checkbox" checked={value.is_active !== false} onChange={e => onChange(v => ({ ...v, is_active: e.target.checked }))} />
         Active (visible for selection on projects)
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
+        <input type="checkbox" checked={!!value.needs_own_spec_section} onChange={e => onChange(v => ({ ...v, needs_own_spec_section: e.target.checked }))} />
+        Needs its own dedicated specification section (rather than sharing a generic clause for its CBI division)
       </label>
 
       {/* Item assignment, directly in the product form */}

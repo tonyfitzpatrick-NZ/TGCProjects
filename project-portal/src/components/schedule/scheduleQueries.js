@@ -156,10 +156,16 @@ export async function deleteGroup(id) {
 
 // ── Admin: items ─────────────────────────────────────────────
 
-export async function createItem({ group_id, name, description, sort_order, cbi_code }) {
+export async function createItem({ group_id, name, description, sort_order, cbi_code, exclude_from_spec }) {
   const { data, error } = await supabase
     .from('sched_items')
-    .insert({ group_id, name, description: description || null, sort_order: sort_order || 0, cbi_code: cbi_code || null })
+    .insert({
+      group_id, name,
+      description: description || null,
+      sort_order: sort_order || 0,
+      cbi_code: cbi_code || null,
+      exclude_from_spec: exclude_from_spec || false,
+    })
     .select()
     .single()
   if (error) throw error

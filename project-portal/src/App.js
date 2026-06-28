@@ -14,6 +14,7 @@ import ConsultantReportPage from './pages/ConsultantReportPage'
 import DocumentsPage from './pages/DocumentsPage'
 import AdminApplicationTemplatesPage from './pages/AdminApplicationTemplatesPage'
 import BackupExportPage from './pages/BackupExportPage'
+import SpecificationBuilderPage from './pages/SpecificationBuilderPage'
 
 // Import the new admin page (we'll create it again safely)
 import AdminSchedulePage from './pages/AdminSchedulePage'
@@ -51,6 +52,7 @@ function App() {
                   <Route path="/admin/settings" element={<SettingsPage />} />
                   <Route path="/admin/applications" element={<AdminApplicationTemplatesPage />} />
                   <Route path="/admin/backup" element={<BackupExportPage />} />
+                  <Route path="/admin/specification-builder" element={<SpecificationBuilderPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   
                   {/* Schedule Admin Route */}

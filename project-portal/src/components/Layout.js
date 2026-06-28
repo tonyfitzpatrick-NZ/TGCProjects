@@ -6,7 +6,7 @@ import logo from '../lib/logo'
 import {
   LayoutGrid, Clock, Bell, BookOpen,
   Users, Settings, LogOut, CheckSquare, BarChart2, ClipboardList,
-  ListChecks, Download
+  ListChecks, Download, FileText
 } from 'lucide-react'
 
 const NAVY = '#1B2B4B'
@@ -92,6 +92,7 @@ export default function Layout({ children }) {
             <NavItem icon={Users} label="Users & Access" path="/admin/users" />
             <NavItem icon={Settings} label="Settings" path="/admin/settings" />
             {isAdmin && <NavItem icon={Download} label="Backup" path="/admin/backup" />}
+            {isAdmin && <NavItem icon={FileText} label="Specification Builder" path="/admin/specification-builder" />}
           </>}
         </div>
 

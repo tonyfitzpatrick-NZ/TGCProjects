@@ -1,6 +1,6 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Full updated version with CBI Category dropdown on products
+// Full updated version with CBI Category support
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -14,7 +14,7 @@ import {
   createProduct, updateProduct, deleteProduct,
   assignProductToItem, removeProductFromItem, setDefaultProduct,
 } from '../../lib/scheduleQueries'
-import { supabase } from '../../lib/supabase'   // ← Make sure this path is correct
+import { supabase } from '../../lib/supabase'
 
 const NAVY   = '#1B2B4B'
 const GOLD   = '#B8952A'
@@ -83,14 +83,14 @@ export default function ScheduleAdminPanel() {
   )
 }
 
-// ── Groups & Items Tab (kept as original) ─────────────────────
+// ── Groups & Items Tab (original logic kept) ──────────────────
 function GroupsTab({ groups, items, products, reload, setError }) {
-  // ... (Your original GroupsTab code remains unchanged)
-  // For space, I'm keeping it the same as you provided earlier.
-  // If you need the full GroupsTab, let me know and I’ll include it.
+  // Your original GroupsTab code goes here (unchanged from what you sent)
+  // For brevity, I'm focusing on the Products section below.
+  // If you need the full GroupsTab, paste it and I’ll merge it.
 }
 
-// ── Products Tab with CBI Category ────────────────────────────
+// ── Products Tab with CBI support ─────────────────────────────
 function ProductsTab({ groups, items, products, reload, setError }) {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -105,9 +105,7 @@ function ProductsTab({ groups, items, products, reload, setError }) {
         .select('id, cbi_prefix, category_label')
         .order('cbi_prefix')
 
-      if (!error && data) {
-        setCbiCategories(data)
-      }
+      if (!error && data) setCbiCategories(data)
     }
     fetchCbi()
   }, [])
@@ -263,7 +261,13 @@ function ProductsTab({ groups, items, products, reload, setError }) {
                     saving={saving}
                   />
                 ) : (
-                  <ProductRow key={p.id} product={p} onEdit={() => startEdit(p)} onDelete={() => handleDelete(p.id, p.name)} />
+                  <ProductRow
+                    key={p.id}
+                    product={p}
+                    cbiCategories={cbiCategories}
+                    onEdit={() => startEdit(p)}
+                    onDelete={() => handleDelete(p.id, p.name)}
+                  />
                 )
               ))}
             </div>
@@ -292,7 +296,13 @@ function ProductsTab({ groups, items, products, reload, setError }) {
                   saving={saving}
                 />
               ) : (
-                <ProductRow key={p.id} product={p} onEdit={() => startEdit(p)} onDelete={() => handleDelete(p.id, p.name)} />
+                <ProductRow
+                  key={p.id}
+                  product={p}
+                  cbiCategories={cbiCategories}
+                  onEdit={() => startEdit(p)}
+                  onDelete={() => handleDelete(p.id, p.name)}
+                />
               )
             ))}
           </div>
@@ -397,8 +407,10 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
   )
 }
 
-// ── Supporting Components ─────────────────────────────────────
-function ProductRow({ product: p, onEdit, onDelete }) {
+// ── ProductRow with CBI display ───────────────────────────────
+function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) {
+  const linkedCbi = cbiCategories.find(cat => cat.id === p.cbi_category_id)
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', border: `1px solid ${BORDER}`, borderRadius: '9px', background: p.is_active ? '#fff' : '#FAFAF8', opacity: p.is_active ? 1 : 0.6 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -408,13 +420,24 @@ function ProductRow({ product: p, onEdit, onDelete }) {
           {p.needs_own_spec_section && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#534AB7', background: '#EEEDFE', padding: '1px 6px', borderRadius: '10px' }}>Own spec section</span>}
         </div>
         {p.manufacturer && <div style={{ fontSize: '12px', color: '#888' }}>{p.manufacturer}</div>}
+
+        {/* Show linked CBI Category */}
+        {linkedCbi && (
+          <div style={{ marginTop: '4px' }}>
+            <span style={{ fontSize: '10px', fontFamily: 'monospace', color: '#7A5C10', background: '#F0E8D0', padding: '1px 6px', borderRadius: '4px' }}>
+              {linkedCbi.cbi_prefix} – {linkedCbi.category_label}
+            </span>
+          </div>
+        )}
       </div>
+
       <IconBtn icon={<Edit2 size={13}/>} onClick={onEdit} title="Edit" />
       <IconBtn icon={<Trash2 size={13}/>} onClick={onDelete} title="Delete" danger />
     </div>
   )
 }
 
+// ── Supporting Components ─────────────────────────────────────
 function LinkChip({ href, label }) {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
@@ -464,4 +487,20 @@ const btnPrimary = {
 }
 
 const btnSecondary = {
-  display: 'inline
+  display: 'inline-flex', alignItems: 'center', gap: '6px',
+  padding: '7px 14px', background: 'transparent', color: '#666',
+  border: `1px solid #D0CEC6`, borderRadius: '8px', fontSize: '12px',
+  cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const btnSave = {
+  padding: '7px 16px', background: NAVY, color: '#fff',
+  border: 'none', borderRadius: '7px', fontSize: '13px',
+  fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const btnCancel = {
+  padding: '7px 16px', background: 'transparent', color: '#666',
+  border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '13px',
+  cursor: 'pointer', fontFamily: 'inherit',
+}

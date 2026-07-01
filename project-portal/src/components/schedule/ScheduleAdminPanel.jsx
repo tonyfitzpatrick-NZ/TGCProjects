@@ -1,6 +1,6 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Full working version with CBI Category support
+// Complete working version with CBI Category support
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -84,7 +84,7 @@ export default function ScheduleAdminPanel() {
 }
 
 // ============================================================
-// GROUPS & ITEMS TAB (Original - fully restored)
+// GROUPS & ITEMS TAB (Full original version restored)
 // ============================================================
 function GroupsTab({ groups, items, products, reload, setError }) {
   const [expandedGroup, setExpandedGroup] = useState({})
@@ -209,9 +209,7 @@ function GroupsTab({ groups, items, products, reload, setError }) {
         <GroupForm value={editGroup} onChange={setEditGroup} onSave={saveGroup} onCancel={() => setEditGroup(null)} saving={saving} />
       )}
 
-      {groups.length === 0 && !editGroup && (
-        <EmptyMsg>No groups yet. Add your first group above.</EmptyMsg>
-      )}
+      {groups.length === 0 && !editGroup && <EmptyMsg>No groups yet. Add your first group above.</EmptyMsg>}
 
       {groups.map(group => {
         const groupItems = sortItems(items.filter(i => i.group_id === group.id))
@@ -346,7 +344,7 @@ function GroupsTab({ groups, items, products, reload, setError }) {
 }
 
 // ============================================================
-// PRODUCTS TAB + PRODUCT FORM + PRODUCT ROW (Updated with CBI)
+// PRODUCTS TAB + FORM + ROW (Full working version with CBI)
 // ============================================================
 function ProductsTab({ groups, items, products, reload, setError }) {
   const [editing, setEditing] = useState(null)
@@ -426,9 +424,15 @@ function ProductsTab({ groups, items, products, reload, setError }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-        <button onClick={() => setEditing({ ...EMPTY })} style={btnPrimary}><Plus size={13} /> Add product</button>
-        <button onClick={() => setShowAll(s => !s)} style={btnSecondary}>{showAll ? 'Hide inactive' : 'Show inactive'}</button>
-        <span style={{ fontSize: '12px', color: '#aaa', marginLeft: 'auto' }}>{visibleProducts.length} product{visibleProducts.length !== 1 ? 's' : ''}</span>
+        <button onClick={() => setEditing({ ...EMPTY })} style={btnPrimary}>
+          <Plus size={13} /> Add product
+        </button>
+        <button onClick={() => setShowAll(s => !s)} style={btnSecondary}>
+          {showAll ? 'Hide inactive' : 'Show inactive'}
+        </button>
+        <span style={{ fontSize: '12px', color: '#aaa', marginLeft: 'auto' }}>
+          {visibleProducts.length} product{visibleProducts.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {editing && !editing.id && (
@@ -477,20 +481,147 @@ function ProductsTab({ groups, items, products, reload, setError }) {
   )
 }
 
-// ProductForm and ProductRow are included in the previous response
-// (They are the same as the last version I sent with CBI dropdown + display)
-function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSave, onCancel, saving }) { /* ... same as last version ... */ }
-function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) { /* ... same as last version ... */ }
+// ProductForm with CBI Dropdown
+function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSave, onCancel, saving }) {
+  function toggleItemAssignment(itemId) {
+    onChange(v => {
+      const current = v.assignedItemIds || []
+      const next = current.includes(itemId) ? current.filter(id => id !== itemId) : [...current, itemId]
+      return { ...v, assignedItemIds: next }
+    })
+  }
 
-// Shared components and styles (same as before)
-function LinkChip({ href, label }) { /* ... */ }
-function IconBtn({ icon, onClick, title, danger }) { /* ... */ }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <input autoFocus placeholder="Product name *" value={value.name} onChange={e => onChange(v => ({ ...v, name: e.target.value }))} style={{ ...inputStyle, flex: 2 }} />
+        <input placeholder="Manufacturer" value={value.manufacturer || ''} onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
+      </div>
+
+      <div>
+        <label style={{ fontSize: '11px', fontWeight: '600', color: '#666', marginBottom: '4px', display: 'block' }}>
+          CBI Category <span style={{ color: '#c00' }}>*</span>
+        </label>
+        <select
+          value={value.cbi_category_id || ''}
+          onChange={e => onChange(v => ({ ...v, cbi_category_id: e.target.value || null }))}
+          required
+          style={inputStyle}
+        >
+          <option value="">— Unassigned —</option>
+          {cbiCategories.map(cat => (
+            <option key={cat.id} value={cat.id}>
+              {cat.cbi_prefix} – {cat.category_label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <input placeholder="Website URL" value={value.url_website || ''} onChange={e => onChange(v => ({ ...v, url_website: e.target.value }))} style={inputStyle} />
+      <input placeholder="BRANZ Appraisal URL" value={value.url_branz_appraisal || ''} onChange={e => onChange(v => ({ ...v, url_branz_appraisal: e.target.value }))} style={inputStyle} />
+      <input placeholder="CodeMark URL" value={value.url_codemark || ''} onChange={e => onChange(v => ({ ...v, url_codemark: e.target.value }))} style={inputStyle} />
+      <input placeholder="Install Manual URL" value={value.url_install_manual || ''} onChange={e => onChange(v => ({ ...v, url_install_manual: e.target.value }))} style={inputStyle} />
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
+        <input type="checkbox" checked={value.is_active !== false} onChange={e => onChange(v => ({ ...v, is_active: e.target.checked }))} />
+        Active (visible for selection on projects)
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
+        <input type="checkbox" checked={!!value.needs_own_spec_section} onChange={e => onChange(v => ({ ...v, needs_own_spec_section: e.target.checked }))} />
+        Needs its own dedicated specification section
+      </label>
+
+      <div style={{ marginTop: '4px' }}>
+        <div style={{ fontSize: '11px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+          Assign to items
+        </div>
+        {items.length === 0 ? (
+          <div style={{ fontSize: '12px', color: '#aaa' }}>No items in the library yet.</div>
+        ) : (
+          <div style={{ maxHeight: '180px', overflowY: 'auto', border: `1px solid #D0CEC6`, borderRadius: '7px', background: '#fff' }}>
+            {groups.map(group => {
+              const groupItems = items.filter(i => i.group_id === group.id)
+              if (groupItems.length === 0) return null
+              return (
+                <div key={group.id}>
+                  <div style={{ fontSize: '10px', fontWeight: '600', color: '#aaa', textTransform: 'uppercase', padding: '6px 10px 2px', background: '#FAFAF8' }}>
+                    {group.name}
+                  </div>
+                  {groupItems.map(item => {
+                    const isChecked = (value.assignedItemIds || []).includes(item.id)
+                    return (
+                      <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px' }}>
+                        <input type="checkbox" checked={isChecked} onChange={() => toggleItemAssignment(item.id)} />
+                        {item.name}
+                      </label>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+        <button onClick={onSave} disabled={saving || !value.name?.trim()} style={btnSave}>
+          {saving ? 'Saving…' : value.id ? 'Save changes' : 'Add product'}
+        </button>
+        <button onClick={onCancel} style={btnCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ProductRow with CBI display
+function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) {
+  const linkedCbi = cbiCategories.find(cat => cat.id === p.cbi_category_id)
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', border: `1px solid ${BORDER}`, borderRadius: '9px', background: p.is_active ? '#fff' : '#FAFAF8', opacity: p.is_active ? 1 : 0.6 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>
+          {p.name}
+          {!p.is_active && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#aaa', background: '#F0EFEF', padding: '1px 6px', borderRadius: '10px' }}>Inactive</span>}
+          {p.needs_own_spec_section && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#534AB7', background: '#EEEDFE', padding: '1px 6px', borderRadius: '10px' }}>Own spec section</span>}
+        </div>
+        {p.manufacturer && <div style={{ fontSize: '12px', color: '#888' }}>{p.manufacturer}</div>}
+        {linkedCbi && (
+          <div style={{ marginTop: '4px' }}>
+            <span style={{ fontSize: '10px', fontFamily: 'monospace', color: '#7A5C10', background: '#F0E8D0', padding: '1px 6px', borderRadius: '4px' }}>
+              {linkedCbi.cbi_prefix} – {linkedCbi.category_label}
+            </span>
+          </div>
+        )}
+      </div>
+      <IconBtn icon={<Edit2 size={13}/>} onClick={onEdit} title="Edit" />
+      <IconBtn icon={<Trash2 size={13}/>} onClick={onDelete} title="Delete" danger />
+    </div>
+  )
+}
+
+// Shared components and styles
+function LinkChip({ href, label }) {
+  return <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+            style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '4px', background: '#EEF1F6', color: NAVY, textDecoration: 'none', fontWeight: '500' }}>{label}</a>
+}
+
+function IconBtn({ icon, onClick, title, danger }) {
+  return <button onClick={onClick} title={title}
+                 style={{ background: 'none', border: `1px solid ${danger ? '#fecaca' : BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: danger ? '#dc2626' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</button>
+}
+
 function LoadingMsg() { return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div> }
 function EmptyMsg({ children }) { return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div> }
-function ErrorMsg({ msg, onClose }) { /* ... */ }
+function ErrorMsg({ msg, onClose }) {
+  return <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
+    <span style={{ flex: 1 }}>{msg}</span>
+    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#993C1D' }}><X size={13}/></button>
+  </div>
+}
 
-const inputStyle = { /* ... */ }
-const btnPrimary = { /* ... */ }
-const btnSecondary = { /* ... */ }
-const btnSave = { /* ... */ }
-const btnCancel = { /* ... */ }
+const inputStyle = { padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '13px', fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#1a1a1a', width: '100%', boxSizing: 'border-box' }
+const btnPrimary = { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: NAVY, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }
+const btnSecondary = { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'transparent', color: '#666', border: `1px solid #D0CEC6`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }
+const btnSave = { padding: '7px 16px', background: NAVY, color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }
+const btnCancel = { padding: '7px 16px', background: 'transparent', color: '#666', border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }

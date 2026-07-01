@@ -1,6 +1,6 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Complete working version with CBI Category support
+// Full working version with CBI Category + Toast integration
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -15,6 +15,7 @@ import {
   assignProductToItem, removeProductFromItem, setDefaultProduct,
 } from '../../lib/scheduleQueries'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../Toast/ToastContext'
 
 const NAVY   = '#1B2B4B'
 const GOLD   = '#B8952A'
@@ -34,6 +35,8 @@ export default function ScheduleAdminPanel() {
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
 
+  const { showToast } = useToast()
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -45,9 +48,12 @@ export default function ScheduleAdminPanel() {
       setGroups(grps)
       setItems(itms)
       setProducts(prods)
-    } catch (e) { setError(e.message) }
+    } catch (e) { 
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
     finally { setLoading(false) }
-  }, [])
+  }, [showToast])
 
   useEffect(() => { load() }, [load])
 
@@ -75,18 +81,18 @@ export default function ScheduleAdminPanel() {
       {loading ? (
         <LoadingMsg />
       ) : tab === 'groups' ? (
-        <GroupsTab groups={groups} items={items} products={products} reload={load} setError={setError} />
+        <GroupsTab groups={groups} items={items} products={products} reload={load} setError={setError} showToast={showToast} />
       ) : (
-        <ProductsTab groups={groups} items={items} products={products} reload={load} setError={setError} />
+        <ProductsTab groups={groups} items={items} products={products} reload={load} setError={setError} showToast={showToast} />
       )}
     </div>
   )
 }
 
 // ============================================================
-// GROUPS & ITEMS TAB (Full original version restored)
+// GROUPS & ITEMS TAB (Full original functionality)
 // ============================================================
-function GroupsTab({ groups, items, products, reload, setError }) {
+function GroupsTab({ groups, items, products, reload, setError, showToast }) {
   const [expandedGroup, setExpandedGroup] = useState({})
   const [expandedItem,  setExpandedItem]  = useState({})
   const [editGroup,     setEditGroup]     = useState(null)
@@ -123,14 +129,25 @@ function GroupsTab({ groups, items, products, reload, setError }) {
       }
       setEditGroup(null)
       await reload()
-    } catch (e) { setError(e.message) }
+      showToast('Group saved successfully', 'success')
+    } catch (e) { 
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
     finally { setSaving(false) }
   }
 
   async function handleDeleteGroup(id, name) {
     if (!window.confirm(`Delete group "${name}"? All items in this group will also be deleted.`)) return
-    try { await deleteGroup(id); await reload() }
-    catch (e) { setError(e.message) }
+    try { 
+      await deleteGroup(id)
+      await reload()
+      showToast('Group deleted', 'success')
+    }
+    catch (e) { 
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
   }
 
   async function saveItem() {
@@ -145,14 +162,25 @@ function GroupsTab({ groups, items, products, reload, setError }) {
       }
       setEditItem(null)
       await reload()
-    } catch (e) { setError(e.message) }
+      showToast('Item saved successfully', 'success')
+    } catch (e) { 
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
     finally { setSaving(false) }
   }
 
   async function handleDeleteItem(id, name) {
     if (!window.confirm(`Delete item "${name}"?`)) return
-    try { await deleteItem(id); await reload() }
-    catch (e) { setError(e.message) }
+    try { 
+      await deleteItem(id)
+      await reload()
+      showToast('Item deleted', 'success')
+    }
+    catch (e) { 
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
   }
 
   async function toggleAssign(itemId, productId, isCurrentlyAssigned) {
@@ -165,7 +193,10 @@ function GroupsTab({ groups, items, products, reload, setError }) {
         await assignProductToItem({ item_id: itemId, product_id: productId, is_default: false })
       }
       await reload()
-    } catch (e) { setError(e.message) }
+    } catch (e) { 
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
     finally { setAssignSaving(s => ({ ...s, [key]: false })) }
   }
 
@@ -174,7 +205,10 @@ function GroupsTab({ groups, items, products, reload, setError }) {
     try {
       await setDefaultProduct(itemProductId, !isCurrentlyDefault)
       await reload()
-    } catch (e) { setError(e.message) }
+    } catch (e) { 
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
     finally { setAssignSaving(s => ({ ...s, [`def-${itemProductId}`]: false })) }
   }
 
@@ -344,9 +378,9 @@ function GroupsTab({ groups, items, products, reload, setError }) {
 }
 
 // ============================================================
-// PRODUCTS TAB + FORM + ROW (Full working version with CBI)
+// PRODUCTS TAB (Full version with CBI Category)
 // ============================================================
-function ProductsTab({ groups, items, products, reload, setError }) {
+function ProductsTab({ groups, items, products, reload, setError, showToast }) {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -388,12 +422,17 @@ function ProductsTab({ groups, items, products, reload, setError }) {
     setSaving(true)
     try {
       const payload = {
-        name: editing.name, manufacturer: editing.manufacturer || null,
-        url_website: editing.url_website || null, url_branz_appraisal: editing.url_branz_appraisal || null,
-        url_codemark: editing.url_codemark || null, url_install_manual: editing.url_install_manual || null,
-        is_active: editing.is_active !== false, needs_own_spec_section: !!editing.needs_own_spec_section,
+        name: editing.name,
+        manufacturer: editing.manufacturer || null,
+        url_website: editing.url_website || null,
+        url_branz_appraisal: editing.url_branz_appraisal || null,
+        url_codemark: editing.url_codemark || null,
+        url_install_manual: editing.url_install_manual || null,
+        is_active: editing.is_active !== false,
+        needs_own_spec_section: !!editing.needs_own_spec_section,
         cbi_category_id: editing.cbi_category_id || null,
       }
+
       let productId = editing.id
       if (productId) {
         await updateProduct(productId, payload)
@@ -401,24 +440,39 @@ function ProductsTab({ groups, items, products, reload, setError }) {
         const created = await createProduct(payload)
         productId = created.id
       }
+
       const wasAssignedTo = items.filter(item => item.assignedProducts.some(ip => ip.product_id === productId)).map(item => item.id)
       const nowAssignedTo = editing.assignedItemIds || []
+
       const toAdd = nowAssignedTo.filter(id => !wasAssignedTo.includes(id))
       const toRemove = wasAssignedTo.filter(id => !nowAssignedTo.includes(id))
+
       await Promise.all([
         ...toAdd.map(itemId => assignProductToItem({ item_id: itemId, product_id: productId, is_default: false })),
         ...toRemove.map(itemId => removeProductFromItem(itemId, productId)),
       ])
+
       setEditing(null)
       await reload()
-    } catch (e) { setError(e.message) }
-    finally { setSaving(false) }
+      showToast('Product saved successfully', 'success')
+    } catch (e) {
+      setError(e.message)
+      showToast(e.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id, name) {
     if (!window.confirm(`Delete product "${name}"?`)) return
-    try { await deleteProduct(id); await reload() }
-    catch (e) { setError(e.message) }
+    try {
+      await deleteProduct(id)
+      await reload()
+      showToast('Product deleted', 'success')
+    } catch (e) {
+      setError(e.message)
+      showToast(e.message, 'error')
+    }
   }
 
   return (
@@ -600,28 +654,108 @@ function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) {
   )
 }
 
-// Shared components and styles
+// Shared components
+function GroupForm({ value, onChange, onSave, onCancel, saving }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '8px', padding: '12px' }}>
+      <input autoFocus placeholder="Group name *" value={value.name} onChange={e => onChange(v => ({ ...v, name: e.target.value }))} style={inputStyle} />
+      <input placeholder="Description (optional)" value={value.description} onChange={e => onChange(v => ({ ...v, description: e.target.value }))} style={inputStyle} />
+      <input placeholder="Sort order" type="number" value={value.sort_order} onChange={e => onChange(v => ({ ...v, sort_order: e.target.value }))} style={{ ...inputStyle, width: '120px' }} />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={onSave} disabled={saving || !value.name?.trim()} style={btnSave}>{saving ? 'Saving…' : value.id ? 'Save changes' : 'Add group'}</button>
+        <button onClick={onCancel} style={btnCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+function ItemForm({ value, groups, onChange, onSave, onCancel, saving }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '8px', padding: '12px' }}>
+      <input autoFocus placeholder="Item name *" value={value.name} onChange={e => onChange(v => ({ ...v, name: e.target.value }))} style={inputStyle} />
+      <input placeholder="Description (optional)" value={value.description} onChange={e => onChange(v => ({ ...v, description: e.target.value }))} style={inputStyle} />
+      <input placeholder="CBI code (optional)" value={value.cbi_code || ''} onChange={e => onChange(v => ({ ...v, cbi_code: e.target.value }))} style={{ ...inputStyle, width: '220px' }} />
+      {!value.id && (
+        <select value={value.group_id} onChange={e => onChange(v => ({ ...v, group_id: e.target.value }))} style={inputStyle}>
+          <option value="">Select group…</option>
+          {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+        </select>
+      )}
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#444', cursor: 'pointer' }}>
+        <input type="checkbox" checked={!!value.exclude_from_spec} onChange={e => onChange(v => ({ ...v, exclude_from_spec: e.target.checked }))} />
+        Exclude from generated specification
+      </label>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={onSave} disabled={saving || !value.name?.trim()} style={btnSave}>{saving ? 'Saving…' : value.id ? 'Save changes' : 'Add item'}</button>
+        <button onClick={onCancel} style={btnCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 function LinkChip({ href, label }) {
-  return <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-            style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '4px', background: '#EEF1F6', color: NAVY, textDecoration: 'none', fontWeight: '500' }}>{label}</a>
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+       style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '4px', background: '#EEF1F6', color: NAVY, textDecoration: 'none', fontWeight: '500' }}>
+      {label}
+    </a>
+  )
 }
 
 function IconBtn({ icon, onClick, title, danger }) {
-  return <button onClick={onClick} title={title}
-                 style={{ background: 'none', border: `1px solid ${danger ? '#fecaca' : BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: danger ? '#dc2626' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</button>
+  return (
+    <button onClick={onClick} title={title}
+            style={{ background: 'none', border: `1px solid ${danger ? '#fecaca' : BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: danger ? '#dc2626' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {icon}
+    </button>
+  )
 }
 
-function LoadingMsg() { return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div> }
-function EmptyMsg({ children }) { return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div> }
+function LoadingMsg() {
+  return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div>
+}
+
+function EmptyMsg({ children }) {
+  return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div>
+}
+
 function ErrorMsg({ msg, onClose }) {
-  return <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
-    <span style={{ flex: 1 }}>{msg}</span>
-    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#993C1D' }}><X size={13}/></button>
-  </div>
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
+      <span style={{ flex: 1 }}>{msg}</span>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#993C1D' }}><X size={13}/></button>
+    </div>
+  )
 }
 
-const inputStyle = { padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '13px', fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#1a1a1a', width: '100%', boxSizing: 'border-box' }
-const btnPrimary = { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: NAVY, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }
-const btnSecondary = { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'transparent', color: '#666', border: `1px solid #D0CEC6`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }
-const btnSave = { padding: '7px 16px', background: NAVY, color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }
-const btnCancel = { padding: '7px 16px', background: 'transparent', color: '#666', border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }
+const inputStyle = {
+  padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px',
+  fontSize: '13px', fontFamily: 'inherit', outline: 'none', background: '#fff',
+  color: '#1a1a1a', width: '100%', boxSizing: 'border-box',
+}
+
+const btnPrimary = {
+  display: 'inline-flex', alignItems: 'center', gap: '6px',
+  padding: '7px 14px', background: NAVY, color: '#fff',
+  border: 'none', borderRadius: '8px', fontSize: '12px',
+  fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const btnSecondary = {
+  display: 'inline-flex', alignItems: 'center', gap: '6px',
+  padding: '7px 14px', background: 'transparent', color: '#666',
+  border: `1px solid #D0CEC6`, borderRadius: '8px', fontSize: '12px',
+  cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const btnSave = {
+  padding: '7px 16px', background: NAVY, color: '#fff',
+  border: 'none', borderRadius: '7px', fontSize: '13px',
+  fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const btnCancel = {
+  padding: '7px 16px', background: 'transparent', color: '#666',
+  border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '13px',
+  cursor: 'pointer', fontFamily: 'inherit',
+}

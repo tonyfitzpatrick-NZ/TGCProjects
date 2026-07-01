@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
+import { ToastProvider } from './components/Toast/ToastContext'   // ← Added
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import ProjectsPage from './pages/ProjectsPage'
@@ -15,8 +16,6 @@ import DocumentsPage from './pages/DocumentsPage'
 import AdminApplicationTemplatesPage from './pages/AdminApplicationTemplatesPage'
 import BackupExportPage from './pages/BackupExportPage'
 import SpecificationBuilderPage from './pages/SpecificationBuilderPage'
-
-// Import the new admin page (we'll create it again safely)
 import AdminSchedulePage from './pages/AdminSchedulePage'
 
 function ProtectedRoute({ children }) {
@@ -32,39 +31,38 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<ProjectsPage />} />
-                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                  <Route path="/deadlines" element={<DeadlinesPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="/uploads" element={<UploadsPage />} />
-                  <Route path="/tasks" element={<TasksAdminPage />} />
-                  <Route path="/consultants" element={<ConsultantReportPage />} />
-                  <Route path="/documents" element={<DocumentsPage />} />
-                  <Route path="/onedrive" element={<OneDrivePage />} />
-                  <Route path="/admin/users" element={<AdminUsersPage />} />
-                  <Route path="/admin/settings" element={<SettingsPage />} />
-                  <Route path="/admin/applications" element={<AdminApplicationTemplatesPage />} />
-                  <Route path="/admin/backup" element={<BackupExportPage />} />
-                  <Route path="/admin/specification-builder" element={<SpecificationBuilderPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  
-                  {/* Schedule Admin Route */}
-                  <Route path="/admin/schedule" element={<AdminSchedulePage />} />
-                  
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Layout>
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </BrowserRouter>
+      <ToastProvider>           {/* ← Added ToastProvider here */}
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<ProjectsPage />} />
+                    <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                    <Route path="/deadlines" element={<DeadlinesPage />} />
+                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/uploads" element={<UploadsPage />} />
+                    <Route path="/tasks" element={<TasksAdminPage />} />
+                    <Route path="/consultants" element={<ConsultantReportPage />} />
+                    <Route path="/documents" element={<DocumentsPage />} />
+                    <Route path="/onedrive" element={<OneDrivePage />} />
+                    <Route path="/admin/users" element={<AdminUsersPage />} />
+                    <Route path="/admin/settings" element={<SettingsPage />} />
+                    <Route path="/admin/applications" element={<AdminApplicationTemplatesPage />} />
+                    <Route path="/admin/backup" element={<BackupExportPage />} />
+                    <Route path="/admin/specification-builder" element={<SpecificationBuilderPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/admin/schedule" element={<AdminSchedulePage />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Layout>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   )
 }

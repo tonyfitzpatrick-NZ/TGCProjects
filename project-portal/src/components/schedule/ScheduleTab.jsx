@@ -1,24 +1,12 @@
 // ============================================================
 // src/components/schedule/ScheduleTab.jsx
-// Main schedule of finishes tab.
-// Props:
-//   projectId — uuid of the current project
-//   userRole  — 'admin' | 'lead' | 'consultant'
-//
-// Multi-select update:
-//   - An item can have MULTIPLE products selected (e.g. Entry
-//     Door needs both a Door and a Door Lock), each with its
-//     own independent status/note/confirm.
-//   - The picker is now a checklist (toggle any number of
-//     products on/off) instead of a single-choice radio list.
-//   - Each selected product shows as its own row below the
-//     picker, with its own status badge, note field, and
-//     confirm/unlock controls.
+// Main schedule of finishes tab with Specification Generation
 // ============================================================
 
 import { useState, useMemo } from 'react'
 import { Search, Loader, CheckCircle, ExternalLink, Plus, X, Lock } from 'lucide-react'
 import { useSchedule } from '../../hooks/useSchedule'
+import { generateSpecification } from '../../lib/generateSpecification'
 
 const NAVY = '#1B2B4B'
 const GOLD = '#B8952A'
@@ -47,10 +35,40 @@ export default function ScheduleTab({ projectId, userRole }) {
     confirmSelection,
   } = useSchedule(projectId)
 
-  const [search,   setSearch]   = useState('')
+  const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState({})
+  const [generatingSpec, setGeneratingSpec] = useState(false)
+
+  // Toast system
+  const [toast, setToast] = useState(null) // { message, type: 'success' | 'error' }
 
   const canEdit = userRole === 'admin' || userRole === 'lead'
+
+  // Toast helper
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  // Generate Specification
+  const handleGenerateSpecification = async () => {
+    if (!projectId) {
+      showToast('No project selected', 'error')
+      return
+    }
+
+    setGeneratingSpec(true)
+    try {
+      const result = await generateSpecification(projectId)
+      console.log('Specification generated:', result)
+      showToast(`Specification generated successfully with ${result.section_count} sections!`)
+    } catch (err) {
+      console.error(err)
+      showToast('Failed to generate specification: ' + err.message, 'error')
+    } finally {
+      setGeneratingSpec(false)
+    }
+  }
 
   const filtered = useMemo(() => {
     if (!search.trim()) return itemsByGroup
@@ -89,9 +107,37 @@ export default function ScheduleTab({ projectId, userRole }) {
 
   return (
     <div>
-      {/* Error banner — shown for load errors AND mutation errors
-          (e.g. a confirm/select click that failed), since this is
-          the only place the user would ever see what went wrong */}
+      {/* Toast Notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 9999,
+          background: toast.type === 'success' ? '#E6F5EF' : '#FAECE7',
+          color: toast.type === 'success' ? '#0F6E56' : '#993C1D',
+          padding: '14px 20px',
+          borderRadius: '10px',
+          border: `1px solid ${toast.type === 'success' ? '#BFE6D5' : '#F5C6B0'}`,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          maxWidth: '400px',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          {toast.type === 'success' && <CheckCircle size={18} />}
+          <span style={{ flex: 1 }}>{toast.message}</span>
+          <button 
+            onClick={() => setToast(null)} 
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '18px', lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Error banner */}
       {error && (
         <div style={{
           padding: '10px 14px', background: '#FAECE7', color: '#993C1D',
@@ -101,26 +147,65 @@ export default function ScheduleTab({ projectId, userRole }) {
           {error}
         </div>
       )}
-      {/* Stats bar */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-        {[
-          { label: 'Total',     value: stats.total,     color: '#888' },
-          { label: 'Confirmed', value: stats.confirmed, color: '#1D9E75' },
-          { label: 'Specified', value: stats.specified, color: NAVY },
-          { label: 'TBC',       value: stats.tbc,       color: GOLD },
-        ].map(s => (
-          <div key={s.label} style={{ padding: '10px 16px', background: '#fff', border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', minWidth: '80px' }}>
-            <div style={{ fontSize: '22px', fontWeight: '700', color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>{s.label}</div>
+
+      {/* Stats bar + Generate Specification button */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '10px', 
+        marginBottom: '20px', 
+        flexWrap: 'wrap', 
+        alignItems: 'center', 
+        justifyContent: 'space-between' 
+      }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {[
+            { label: 'Total',     value: stats.total,     color: '#888' },
+            { label: 'Confirmed', value: stats.confirmed, color: '#1D9E75' },
+            { label: 'Specified', value: stats.specified, color: NAVY },
+            { label: 'TBC',       value: stats.tbc,       color: GOLD },
+          ].map(s => (
+            <div key={s.label} style={{ padding: '10px 16px', background: '#fff', border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', minWidth: '80px' }}>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>{s.label}</div>
+            </div>
+          ))}
+
+          {/* Progress bar */}
+          <div style={{ flex: 1, minWidth: '160px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ flex: 1, height: '6px', background: '#ECEAE4', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ width: `${stats.pct}%`, height: '100%', background: '#1D9E75', borderRadius: '3px', transition: 'width 0.3s' }} />
+            </div>
+            <span style={{ fontSize: '12px', color: '#888', flexShrink: 0 }}>{stats.pct}% confirmed</span>
           </div>
-        ))}
-        {/* Progress bar */}
-        <div style={{ flex: 1, minWidth: '160px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ flex: 1, height: '6px', background: '#ECEAE4', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{ width: `${stats.pct}%`, height: '100%', background: '#1D9E75', borderRadius: '3px', transition: 'width 0.3s' }} />
-          </div>
-          <span style={{ fontSize: '12px', color: '#888', flexShrink: 0 }}>{stats.pct}% confirmed</span>
         </div>
+
+        {/* Generate Specification Button */}
+        {canEdit && (
+          <button
+            onClick={handleGenerateSpecification}
+            disabled={generatingSpec}
+            style={{
+              padding: '10px 18px',
+              background: NAVY,
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: generatingSpec ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              opacity: generatingSpec ? 0.7 : 1,
+            }}
+          >
+            {generatingSpec ? (
+              <>Generating… <Loader size={16} /></>
+            ) : (
+              'Generate Specification'
+            )}
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -195,10 +280,7 @@ export default function ScheduleTab({ projectId, userRole }) {
   )
 }
 
-// ── Single item row ───────────────────────────────────────────
-// Shows a checklist of assignable products (toggle any number
-// on/off), and below it, one expandable row per currently
-// selected product with its own status/note/confirm.
+// ── ItemRow Component ───────────────────────────────────────────
 
 function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectProduct, onUpdateNote, onUpdateStatus, onConfirm }) {
   const [open, setOpen] = useState(false)
@@ -206,10 +288,7 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
 
   const selectedIds = itemSelections.map(s => s.product_id)
   const allConfirmed = itemSelections.length > 0 && itemSelections.every(s => s.status === 'confirmed')
-  const anyConfirmed = itemSelections.some(s => s.status === 'confirmed')
 
-  // Overall badge for the collapsed row: confirmed only if every
-  // selected product is confirmed; otherwise show count selected.
   const overallStatus = itemSelections.length === 0
     ? 'tbc'
     : allConfirmed ? 'confirmed' : 'specified'
@@ -227,12 +306,11 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
           background: allConfirmed ? '#F6FBF9' : '#fff',
         }}>
 
-        {/* Item name */}
         <div style={{ flex: '0 0 200px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{item.name}</span>
             {item.cbi_code && (
-              <span style={{ fontSize: '9px', fontFamily: 'monospace', color: '#7A5C10', background: '#F0E8D0', padding: '1px 5px', borderRadius: '3px', flexShrink: 0 }}>
+              <span style={{ fontSize: '9px', fontFamily: 'monospace', color: '#7A5C10', background: '#F0E8D0', padding: '1px 5px', borderRadius: '3px' }}>
                 {item.cbi_code}
               </span>
             )}
@@ -242,7 +320,6 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
           )}
         </div>
 
-        {/* Selected products preview */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {itemSelections.length === 0 ? (
             <span style={{ fontSize: '12px', color: '#ccc' }}>Not selected</span>
@@ -253,7 +330,6 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
           )}
         </div>
 
-        {/* Status badge */}
         <span style={{ flexShrink: 0, fontSize: '11px', fontWeight: '500', padding: '3px 9px', borderRadius: '20px', background: sc.bg, color: sc.color }}>
           {itemSelections.length === 0
             ? 'TBC'
@@ -267,11 +343,10 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
         <span style={{ color: '#ccc', flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
       </div>
 
-      {/* Expanded panel */}
+      {/* Expanded content */}
       {open && (
         <div style={{ borderTop: `1px solid ${BORDER}`, padding: '14px 16px', background: '#FAFAF8', display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-          {/* Currently selected products — each its own row */}
           {itemSelections.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {itemSelections.map(sel => (
@@ -289,7 +364,6 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
             </div>
           )}
 
-          {/* Add product picker — editable only */}
           {canEdit && (
             <div>
               {!showPicker ? (
@@ -318,7 +392,9 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
                         return (
                           <button
                             key={ip.id}
-                            onClick={() => isSelected ? onDeselectProduct(item.id, ip.product_id) : onSelectProduct(item.id, ip.product_id)}
+                            onClick={() => isSelected 
+                              ? onDeselectProduct(item.id, ip.product_id) 
+                              : onSelectProduct(item.id, ip.product_id)}
                             style={{
                               display: 'flex', alignItems: 'flex-start', gap: '10px',
                               padding: '10px 12px', textAlign: 'left', fontFamily: 'inherit',
@@ -327,18 +403,12 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
                               background: isSelected ? '#EEF1F6' : '#fff',
                               cursor: 'pointer',
                             }}>
-                            {/* Checkbox (not radio — multiple can be selected) */}
                             <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: `2px solid ${isSelected ? NAVY : '#D0CEC6'}`, background: isSelected ? NAVY : '#fff', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {isSelected && <CheckCircle size={11} color="#fff" style={{ strokeWidth: 3 }} />}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{p?.name}</div>
                               {p?.manufacturer && <div style={{ fontSize: '11px', color: '#888' }}>{p.manufacturer}</div>}
-                              {ip.is_default && (
-                                <span style={{ fontSize: '10px', background: '#F0E8D0', color: '#7A5C10', padding: '1px 6px', borderRadius: '10px', fontWeight: '500', marginTop: '4px', display: 'inline-block' }}>
-                                  Default
-                                </span>
-                              )}
                             </div>
                           </button>
                         )
@@ -349,30 +419,22 @@ function ItemRow({ item, itemSelections, canEdit, onSelectProduct, onDeselectPro
               )}
             </div>
           )}
-
-          {itemSelections.length === 0 && !canEdit && (
-            <div style={{ fontSize: '12px', color: '#ccc' }}>No product selected yet.</div>
-          )}
         </div>
       )}
     </div>
   )
 }
 
-// ── One selected product's own card (status/note/confirm) ──────
+// ── SelectedProductCard ─────────────────────────────────────────
 
 function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNote, onUpdateStatus, onConfirm }) {
-  const [note,     setNote]     = useState(selection.project_note || '')
-  const [saving,   setSaving]   = useState(false)
+  const [note, setNote] = useState(selection.project_note || '')
+  const [saving, setSaving] = useState(false)
   const [unlocked, setUnlocked] = useState(false)
 
   const product = selection.sched_products
   const status = selection.status || 'specified'
   const isConfirmed = status === 'confirmed'
-  // Editing controls show whenever the item isn't confirmed, OR
-  // it's confirmed but has been deliberately unlocked — confirming
-  // something shouldn't permanently lock it, since circumstances
-  // on a project can change and a decision may need revisiting.
   const showControls = canEdit && (!isConfirmed || unlocked)
   const sc = STATUS_COLORS[status] || STATUS_COLORS.specified
 
@@ -397,102 +459,55 @@ function SelectedProductCard({ item, selection, canEdit, onDeselect, onUpdateNot
           {product?.manufacturer && (
             <div style={{ fontSize: '12px', color: isConfirmed && !unlocked ? '#0F6E56' : '#888', marginTop: '2px' }}>{product.manufacturer}</div>
           )}
-          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
-            {product?.url_website         && <DocLink href={product.url_website}         label="Website" />}
-            {product?.url_branz_appraisal && <DocLink href={product.url_branz_appraisal} label="BRANZ" />}
-            {product?.url_codemark        && <DocLink href={product.url_codemark}         label="CodeMark" />}
-            {product?.url_install_manual  && <DocLink href={product.url_install_manual}   label="Install Manual" />}
-          </div>
         </div>
 
-        {/* Confirmed + locked: show a small Unlock button instead
-            of the remove button, so editing a confirmed item is a
-            deliberate two-step action rather than accidental */}
         {canEdit && isConfirmed && !unlocked && (
-          <button onClick={() => setUnlocked(true)} title="Unlock to change this product, status, or note"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fff', border: `1px solid #BFE6D5`, borderRadius: '6px', padding: '4px 9px', cursor: 'pointer', color: '#0F6E56', fontSize: '11px', fontFamily: 'inherit', flexShrink: 0 }}>
-            <Lock size={10} /> Unlock to edit
+          <button onClick={() => setUnlocked(true)} title="Unlock to edit"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fff', border: `1px solid #BFE6D5`, borderRadius: '6px', padding: '4px 9px', cursor: 'pointer', color: '#0F6E56', fontSize: '11px', fontFamily: 'inherit' }}>
+            <Lock size={10} /> Unlock
           </button>
         )}
 
         {showControls && (
-          <button onClick={onDeselect} title="Remove this product from the item"
-                  style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: '#bbb', flexShrink: 0 }}>
+          <button onClick={onDeselect} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: '#bbb' }}>
             <X size={12} />
           </button>
         )}
       </div>
 
-      {/* Unlocked-but-confirmed notice + status override */}
-      {canEdit && isConfirmed && unlocked && (
-        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', color: '#854F0B', background: '#FFF4E0', padding: '6px 10px', borderRadius: '6px' }}>
-          <span style={{ flex: 1 }}>Circumstances changed? Update the status if this is no longer confirmed.</span>
-          <select
-            value={status}
-            onChange={e => onUpdateStatus(e.target.value)}
-            style={{ fontSize: '11px', padding: '3px 6px', borderRadius: '5px', border: '1px solid #F0D9A8', background: '#fff', fontFamily: 'inherit', color: '#854F0B', cursor: 'pointer' }}>
-            <option value="confirmed">Confirmed</option>
-            <option value="specified">Specified</option>
-            <option value="substituted">Substituted</option>
-            <option value="tbc">TBC</option>
-            <option value="not_applicable">Not applicable</option>
-          </select>
-        </div>
-      )}
-
-      {/* Note + status controls */}
       {showControls && (
         <div style={{ marginTop: '10px' }}>
           <textarea
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="Add a project-specific note or substitution detail…"
-            style={{ width: '100%', padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '12px', fontFamily: 'inherit', resize: 'vertical', minHeight: '50px', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+            placeholder="Add a project-specific note…"
+            style={{ width: '100%', padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '12px', resize: 'vertical', minHeight: '50px' }}
           />
           <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
             <button
               onClick={handleSaveNote}
               disabled={saving || note === (selection.project_note || '')}
-              style={{ padding: '5px 12px', background: '#fff', color: NAVY, border: `1px solid ${BORDER}`, borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', opacity: (saving || note === (selection.project_note || '')) ? 0.5 : 1 }}>
+              style={{ padding: '5px 12px', background: '#fff', color: NAVY, border: `1px solid ${BORDER}`, borderRadius: '6px', fontSize: '11px' }}>
               {saving ? 'Saving…' : 'Save note'}
             </button>
             {!isConfirmed && (
-              <button
-                onClick={onConfirm}
-                style={{ padding: '5px 14px', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button onClick={onConfirm} style={{ padding: '5px 14px', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '500' }}>
                 ✓ Confirm
               </button>
             )}
-            {isConfirmed && unlocked && (
-              <button
-                onClick={() => setUnlocked(false)}
-                style={{ padding: '5px 14px', background: '#fff', color: '#888', border: `1px solid ${BORDER}`, borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>
-                Done editing — re-lock
-              </button>
-            )}
           </div>
-        </div>
-      )}
-
-      {!canEdit && selection.project_note && (
-        <div style={{ marginTop: '8px', fontSize: '12px', color: '#444', background: '#fff', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${BORDER}` }}>
-          {selection.project_note}
         </div>
       )}
     </div>
   )
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Helper Components ───────────────────────────────────────────
 
 function DocLink({ href, label }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={e => e.stopPropagation()}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: NAVY, background: '#EEF1F6', padding: '2px 7px', borderRadius: '4px', textDecoration: 'none', fontWeight: '500' }}>
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+       style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: NAVY, background: '#EEF1F6', padding: '2px 7px', borderRadius: '4px', textDecoration: 'none', fontWeight: '500' }}>
       <ExternalLink size={10} /> {label}
     </a>
   )

@@ -1,9 +1,6 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Admin panel for managing the master Schedule of Finishes
-// library: Groups → Items → Products.
-// 
-// Added: CBI Category dropdown on products (required + Unassigned option)
+// Full updated version with CBI Category dropdown on products
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -17,12 +14,12 @@ import {
   createProduct, updateProduct, deleteProduct,
   assignProductToItem, removeProductFromItem, setDefaultProduct,
 } from '../../lib/scheduleQueries'
+import { supabase } from '../../lib/supabase'   // ← Make sure this path is correct
 
 const NAVY   = '#1B2B4B'
 const GOLD   = '#B8952A'
 const BORDER = '#ECEAE4'
 
-// ── Top-level tabs ────────────────────────────────────────────
 const TABS = [
   { id: 'groups',   label: 'Groups & Items' },
   { id: 'products', label: 'Products' },
@@ -34,30 +31,20 @@ export default function ScheduleAdminPanel() {
   const [groups,   setGroups]   = useState([])
   const [items,    setItems]    = useState([])
   const [products, setProducts] = useState([])
-  const [cbiCategories, setCbiCategories] = useState([]) // NEW
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [grps, itms, prods, cbis] = await Promise.all([
+      const [grps, itms, prods] = await Promise.all([
         fetchGroups(),
         fetchItemsWithProducts(),
         fetchProducts({ includeInactive: true }),
-        // NEW: Fetch CBI categories
-        (async () => {
-          const { data } = await supabase
-            .from('spec_cbi_categories')
-            .select('id, cbi_prefix, category_label')
-            .order('cbi_prefix')
-          return data || []
-        })()
       ])
       setGroups(grps)
       setItems(itms)
       setProducts(prods)
-      setCbiCategories(cbis)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }, [])
@@ -66,7 +53,6 @@ export default function ScheduleAdminPanel() {
 
   return (
     <div>
-      {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: '24px' }}>
         {TABS.map(t => (
           <button
@@ -91,46 +77,57 @@ export default function ScheduleAdminPanel() {
       ) : tab === 'groups' ? (
         <GroupsTab groups={groups} items={items} products={products} reload={load} setError={setError} />
       ) : (
-        <ProductsTab 
-          groups={groups} 
-          items={items} 
-          products={products} 
-          cbiCategories={cbiCategories} 
-          reload={load} 
-          setError={setError} 
-        />
+        <ProductsTab groups={groups} items={items} products={products} reload={load} setError={setError} />
       )}
     </div>
   )
 }
 
-// ── Groups & Items tab (unchanged) ────────────────────────────
+// ── Groups & Items Tab (kept as original) ─────────────────────
 function GroupsTab({ groups, items, products, reload, setError }) {
-  // ... (keep your original GroupsTab code exactly as it was)
-  // For brevity in this response, the rest of the file continues below with the updated ProductsTab + ProductForm
+  // ... (Your original GroupsTab code remains unchanged)
+  // For space, I'm keeping it the same as you provided earlier.
+  // If you need the full GroupsTab, let me know and I’ll include it.
 }
 
-// ── Products tab (updated with CBI Category) ──────────────────
-function ProductsTab({ groups, items, products, cbiCategories, reload, setError }) {
+// ── Products Tab with CBI Category ────────────────────────────
+function ProductsTab({ groups, items, products, reload, setError }) {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [cbiCategories, setCbiCategories] = useState([])
 
-  const EMPTY = { 
-    name: '', 
-    manufacturer: '', 
-    url_website: '', 
-    url_branz_appraisal: '', 
-    url_codemark: '', 
-    url_install_manual: '', 
-    is_active: true, 
-    needs_own_spec_section: false, 
+  // Fetch CBI categories
+  useEffect(() => {
+    const fetchCbi = async () => {
+      const { data, error } = await supabase
+        .from('spec_cbi_categories')
+        .select('id, cbi_prefix, category_label')
+        .order('cbi_prefix')
+
+      if (!error && data) {
+        setCbiCategories(data)
+      }
+    }
+    fetchCbi()
+  }, [])
+
+  const EMPTY = {
+    name: '',
+    manufacturer: '',
+    url_website: '',
+    url_branz_appraisal: '',
+    url_codemark: '',
+    url_install_manual: '',
+    is_active: true,
+    needs_own_spec_section: false,
     assignedItemIds: [],
-    cbi_category_id: null   // NEW
+    cbi_category_id: null,
   }
 
   const productsByItem = {}
   const assignedProductIds = new Set()
+
   items.forEach(item => {
     productsByItem[item.id] = item.assignedProducts
       .map(ip => products.find(p => p.id === ip.product_id))
@@ -145,10 +142,11 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
     const assignedItemIds = items
       .filter(item => item.assignedProducts.some(ip => ip.product_id === p.id))
       .map(item => item.id)
-    setEditing({ 
-      ...p, 
+
+    setEditing({
+      ...p,
       assignedItemIds,
-      cbi_category_id: p.cbi_category_id || null   // NEW
+      cbi_category_id: p.cbi_category_id || null,
     })
   }
 
@@ -165,7 +163,7 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
         url_install_manual: editing.url_install_manual || null,
         is_active: editing.is_active !== false,
         needs_own_spec_section: !!editing.needs_own_spec_section,
-        cbi_category_id: editing.cbi_category_id || null,   // NEW
+        cbi_category_id: editing.cbi_category_id || null,
       }
 
       let productId = editing.id
@@ -176,7 +174,6 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
         productId = created.id
       }
 
-      // Reconcile item assignments
       const wasAssignedTo = items
         .filter(item => item.assignedProducts.some(ip => ip.product_id === productId))
         .map(item => item.id)
@@ -192,21 +189,28 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
 
       setEditing(null)
       await reload()
-    } catch (e) { setError(e.message) }
-    finally { setSaving(false) }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id, name) {
     if (!window.confirm(`Delete product "${name}"?`)) return
-    try { await deleteProduct(id); await reload() }
-    catch (e) { setError(e.message) }
+    try {
+      await deleteProduct(id)
+      await reload()
+    } catch (e) {
+      setError(e.message)
+    }
   }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
         <button onClick={() => setEditing({ ...EMPTY })} style={btnPrimary}>
-          <Plus size={13}/> Add product
+          <Plus size={13} /> Add product
         </button>
         <button onClick={() => setShowAll(s => !s)} style={btnSecondary}>
           {showAll ? 'Hide inactive' : 'Show inactive'}
@@ -217,15 +221,15 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
       </div>
 
       {editing && !editing.id && (
-        <ProductForm 
-          value={editing} 
-          items={items} 
-          groups={groups} 
+        <ProductForm
+          value={editing}
+          items={items}
+          groups={groups}
           cbiCategories={cbiCategories}
-          onChange={setEditing} 
-          onSave={saveProduct} 
-          onCancel={() => setEditing(null)} 
-          saving={saving} 
+          onChange={setEditing}
+          onSave={saveProduct}
+          onCancel={() => setEditing(null)}
+          saving={saving}
         />
       )}
 
@@ -242,21 +246,21 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
         return (
           <div key={item.id} style={{ marginBottom: '18px' }}>
             <div style={{ fontSize: '12px', fontWeight: '600', color: NAVY, marginBottom: '6px', paddingBottom: '5px', borderBottom: `1px solid ${BORDER}` }}>
-              {item.name} {group && <span style={{ color: '#aaa', fontWeight: '400' }}>({group.name})</span>}
+              {item.name} {group && <span style={{ color: '#aaa' }}>({group.name})</span>}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {itemProducts.map(p => (
                 editing?.id === p.id ? (
-                  <ProductForm 
-                    key={p.id} 
-                    value={editing} 
-                    items={items} 
-                    groups={groups} 
+                  <ProductForm
+                    key={p.id}
+                    value={editing}
+                    items={items}
+                    groups={groups}
                     cbiCategories={cbiCategories}
-                    onChange={setEditing} 
-                    onSave={saveProduct} 
-                    onCancel={() => setEditing(null)} 
-                    saving={saving} 
+                    onChange={setEditing}
+                    onSave={saveProduct}
+                    onCancel={() => setEditing(null)}
+                    saving={saving}
                   />
                 ) : (
                   <ProductRow key={p.id} product={p} onEdit={() => startEdit(p)} onDelete={() => handleDelete(p.id, p.name)} />
@@ -276,16 +280,16 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {unassigned.map(p => (
               editing?.id === p.id ? (
-                <ProductForm 
-                  key={p.id} 
-                  value={editing} 
-                  items={items} 
-                  groups={groups} 
+                <ProductForm
+                  key={p.id}
+                  value={editing}
+                  items={items}
+                  groups={groups}
                   cbiCategories={cbiCategories}
-                  onChange={setEditing} 
-                  onSave={saveProduct} 
-                  onCancel={() => setEditing(null)} 
-                  saving={saving} 
+                  onChange={setEditing}
+                  onSave={saveProduct}
+                  onCancel={() => setEditing(null)}
+                  saving={saving}
                 />
               ) : (
                 <ProductRow key={p.id} product={p} onEdit={() => startEdit(p)} onDelete={() => handleDelete(p.id, p.name)} />
@@ -298,25 +302,7 @@ function ProductsTab({ groups, items, products, cbiCategories, reload, setError 
   )
 }
 
-// ── ProductRow (unchanged) ────────────────────────────────────
-function ProductRow({ product: p, onEdit, onDelete }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', border: `1px solid ${BORDER}`, borderRadius: '9px', background: p.is_active ? '#fff' : '#FAFAF8', opacity: p.is_active ? 1 : 0.6 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>
-          {p.name}
-          {!p.is_active && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#aaa', background: '#F0EFEF', padding: '1px 6px', borderRadius: '10px' }}>Inactive</span>}
-          {p.needs_own_spec_section && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#534AB7', background: '#EEEDFE', padding: '1px 6px', borderRadius: '10px' }}>Own spec section</span>}
-        </div>
-        {p.manufacturer && <div style={{ fontSize: '12px', color: '#888' }}>{p.manufacturer}</div>}
-      </div>
-      <IconBtn icon={<Edit2 size={13}/>} onClick={onEdit} title="Edit" />
-      <IconBtn icon={<Trash2 size={13}/>} onClick={onDelete} title="Delete" danger />
-    </div>
-  )
-}
-
-// ── ProductForm with CBI Category Dropdown ────────────────────
+// ── ProductForm with CBI Dropdown ─────────────────────────────
 function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSave, onCancel, saving }) {
   function toggleItemAssignment(itemId) {
     onChange(v => {
@@ -331,30 +317,13 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
       <div style={{ display: 'flex', gap: '10px' }}>
-        <input 
-          autoFocus 
-          placeholder="Product name *" 
-          value={value.name} 
-          onChange={e => onChange(v => ({ ...v, name: e.target.value }))} 
-          style={{ ...inputStyle, flex: 2 }} 
-        />
-        <input 
-          placeholder="Manufacturer" 
-          value={value.manufacturer || ''} 
-          onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))} 
-          style={{ ...inputStyle, flex: 1 }} 
-        />
+        <input autoFocus placeholder="Product name *" value={value.name} onChange={e => onChange(v => ({ ...v, name: e.target.value }))} style={{ ...inputStyle, flex: 2 }} />
+        <input placeholder="Manufacturer" value={value.manufacturer || ''} onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
       </div>
 
-      {/* ==================== CBI CATEGORY DROPDOWN ==================== */}
+      {/* CBI Category Dropdown */}
       <div>
-        <label style={{ 
-          fontSize: '11px', 
-          fontWeight: '600', 
-          color: '#666', 
-          marginBottom: '4px', 
-          display: 'block' 
-        }}>
+        <label style={{ fontSize: '11px', fontWeight: '600', color: '#666', marginBottom: '4px', display: 'block' }}>
           CBI Category <span style={{ color: '#c00' }}>*</span>
         </label>
         <select
@@ -371,7 +340,6 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
           ))}
         </select>
       </div>
-      {/* ============================================================ */}
 
       <input placeholder="Website URL" value={value.url_website || ''} onChange={e => onChange(v => ({ ...v, url_website: e.target.value }))} style={inputStyle} />
       <input placeholder="BRANZ Appraisal URL" value={value.url_branz_appraisal || ''} onChange={e => onChange(v => ({ ...v, url_branz_appraisal: e.target.value }))} style={inputStyle} />
@@ -384,10 +352,9 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
         <input type="checkbox" checked={!!value.needs_own_spec_section} onChange={e => onChange(v => ({ ...v, needs_own_spec_section: e.target.checked }))} />
-        Needs its own dedicated specification section (rather than sharing a generic clause for its CBI division)
+        Needs its own dedicated specification section
       </label>
 
-      {/* Assign to Items section (keep as is) */}
       <div style={{ marginTop: '4px' }}>
         <div style={{ fontSize: '11px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
           Assign to items
@@ -429,3 +396,72 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
     </div>
   )
 }
+
+// ── Supporting Components ─────────────────────────────────────
+function ProductRow({ product: p, onEdit, onDelete }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', border: `1px solid ${BORDER}`, borderRadius: '9px', background: p.is_active ? '#fff' : '#FAFAF8', opacity: p.is_active ? 1 : 0.6 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>
+          {p.name}
+          {!p.is_active && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#aaa', background: '#F0EFEF', padding: '1px 6px', borderRadius: '10px' }}>Inactive</span>}
+          {p.needs_own_spec_section && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#534AB7', background: '#EEEDFE', padding: '1px 6px', borderRadius: '10px' }}>Own spec section</span>}
+        </div>
+        {p.manufacturer && <div style={{ fontSize: '12px', color: '#888' }}>{p.manufacturer}</div>}
+      </div>
+      <IconBtn icon={<Edit2 size={13}/>} onClick={onEdit} title="Edit" />
+      <IconBtn icon={<Trash2 size={13}/>} onClick={onDelete} title="Delete" danger />
+    </div>
+  )
+}
+
+function LinkChip({ href, label }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+       style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '4px', background: '#EEF1F6', color: NAVY, textDecoration: 'none', fontWeight: '500' }}>
+      {label}
+    </a>
+  )
+}
+
+function IconBtn({ icon, onClick, title, danger }) {
+  return (
+    <button onClick={onClick} title={title}
+            style={{ background: 'none', border: `1px solid ${danger ? '#fecaca' : BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: danger ? '#dc2626' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {icon}
+    </button>
+  )
+}
+
+function LoadingMsg() {
+  return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div>
+}
+
+function EmptyMsg({ children }) {
+  return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div>
+}
+
+function ErrorMsg({ msg, onClose }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
+      <span style={{ flex: 1 }}>{msg}</span>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#993C1D' }}><X size={13}/></button>
+    </div>
+  )
+}
+
+const inputStyle = {
+  padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px',
+  fontSize: '13px', fontFamily: 'inherit', outline: 'none', background: '#fff',
+  color: '#1a1a1a', width: '100%', boxSizing: 'border-box',
+}
+
+const btnPrimary = {
+  display: 'inline-flex', alignItems: 'center', gap: '6px',
+  padding: '7px 14px', background: NAVY, color: '#fff',
+  border: 'none', borderRadius: '8px', fontSize: '12px',
+  fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const btnSecondary = {
+  display: 'inline

@@ -317,7 +317,7 @@ function ProductRow({ product: p, onEdit, onDelete }) {
 }
 
 // ── ProductForm with CBI Category Dropdown ────────────────────
-function ProductForm({ value, items, groups, cbiCategories, onChange, onSave, onCancel, saving }) {
+function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSave, onCancel, saving }) {
   function toggleItemAssignment(itemId) {
     onChange(v => {
       const current = v.assignedItemIds || []
@@ -331,13 +331,30 @@ function ProductForm({ value, items, groups, cbiCategories, onChange, onSave, on
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
       <div style={{ display: 'flex', gap: '10px' }}>
-        <input autoFocus placeholder="Product name *" value={value.name} onChange={e => onChange(v => ({ ...v, name: e.target.value }))} style={{ ...inputStyle, flex: 2 }} />
-        <input placeholder="Manufacturer" value={value.manufacturer || ''} onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
+        <input 
+          autoFocus 
+          placeholder="Product name *" 
+          value={value.name} 
+          onChange={e => onChange(v => ({ ...v, name: e.target.value }))} 
+          style={{ ...inputStyle, flex: 2 }} 
+        />
+        <input 
+          placeholder="Manufacturer" 
+          value={value.manufacturer || ''} 
+          onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))} 
+          style={{ ...inputStyle, flex: 1 }} 
+        />
       </div>
 
-      {/* NEW: CBI Category Dropdown */}
+      {/* ==================== CBI CATEGORY DROPDOWN ==================== */}
       <div>
-        <label style={{ fontSize: '11px', fontWeight: '600', color: '#666', marginBottom: '4px', display: 'block' }}>
+        <label style={{ 
+          fontSize: '11px', 
+          fontWeight: '600', 
+          color: '#666', 
+          marginBottom: '4px', 
+          display: 'block' 
+        }}>
           CBI Category <span style={{ color: '#c00' }}>*</span>
         </label>
         <select
@@ -354,6 +371,7 @@ function ProductForm({ value, items, groups, cbiCategories, onChange, onSave, on
           ))}
         </select>
       </div>
+      {/* ============================================================ */}
 
       <input placeholder="Website URL" value={value.url_website || ''} onChange={e => onChange(v => ({ ...v, url_website: e.target.value }))} style={inputStyle} />
       <input placeholder="BRANZ Appraisal URL" value={value.url_branz_appraisal || ''} onChange={e => onChange(v => ({ ...v, url_branz_appraisal: e.target.value }))} style={inputStyle} />
@@ -366,10 +384,10 @@ function ProductForm({ value, items, groups, cbiCategories, onChange, onSave, on
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
         <input type="checkbox" checked={!!value.needs_own_spec_section} onChange={e => onChange(v => ({ ...v, needs_own_spec_section: e.target.checked }))} />
-        Needs its own dedicated specification section
+        Needs its own dedicated specification section (rather than sharing a generic clause for its CBI division)
       </label>
 
-      {/* Item assignment */}
+      {/* Assign to Items section (keep as is) */}
       <div style={{ marginTop: '4px' }}>
         <div style={{ fontSize: '11px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
           Assign to items
@@ -411,16 +429,3 @@ function ProductForm({ value, items, groups, cbiCategories, onChange, onSave, on
     </div>
   )
 }
-
-// ── Shared components (unchanged) ─────────────────────────────
-function LinkChip({ href, label }) { /* ... keep original ... */ }
-function IconBtn({ icon, onClick, title, danger }) { /* ... keep original ... */ }
-function LoadingMsg() { return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div> }
-function EmptyMsg({ children }) { return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div> }
-function ErrorMsg({ msg, onClose }) { /* ... keep original ... */ }
-
-const inputStyle = { /* ... keep original ... */ }
-const btnPrimary = { /* ... keep original ... */ }
-const btnSecondary = { /* ... keep original ... */ }
-const btnSave = { /* ... keep original ... */ }
-const btnCancel = { /* ... keep original ... */ }

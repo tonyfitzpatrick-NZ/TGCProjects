@@ -10,9 +10,11 @@ export default function DashboardPage() {
   const [activeProjects, setActiveProjects] = useState([])
   const [myTasks, setMyTasks] = useState([])
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([])
+  const [recentMessages, setRecentMessages] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [loadingDeadlines, setLoadingDeadlines] = useState(true)
+  const [loadingMessages, setLoadingMessages] = useState(true)
   const navigate = useNavigate()
 
   const [userId, setUserId] = useState(null)
@@ -67,7 +69,7 @@ export default function DashboardPage() {
           .eq('assigned_user_id', userId)
           .not('status', 'eq', 'done')
           .order('deadline', { ascending: true, nullsFirst: false })
-          .limit(8)
+          .limit(6)
 
         if (!error) setMyTasks(data || [])
       } catch (err) {
@@ -79,7 +81,7 @@ export default function DashboardPage() {
     fetchMyTasks()
   }, [userId])
 
-  // Fetch Upcoming Deadlines (next 14 days)
+  // Fetch Upcoming Deadlines
   useEffect(() => {
     if (!userId) return
 
@@ -102,7 +104,7 @@ export default function DashboardPage() {
           .not('status', 'eq', 'done')
           .gte('deadline', today)
           .order('deadline', { ascending: true })
-          .limit(8)
+          .limit(6)
 
         if (!error) setUpcomingDeadlines(data || [])
       } catch (err) {
@@ -114,8 +116,38 @@ export default function DashboardPage() {
     fetchUpcomingDeadlines()
   }, [userId])
 
+  // Fetch Recent Messages (from message_threads)
+  useEffect(() => {
+    if (!userId) return
+
+    const fetchRecentMessages = async () => {
+      setLoadingMessages(true)
+      try {
+        const { data, error } = await supabase
+          .from('message_threads')
+          .select(`
+            id,
+            title,
+            updated_at,
+            project_id,
+            projects:project_id (name)
+          `)
+          .order('updated_at', { ascending: false })
+          .limit(6)
+
+        if (!error) setRecentMessages(data || [])
+      } catch (err) {
+        console.error('Error fetching messages:', err)
+      } finally {
+        setLoadingMessages(false)
+      }
+    }
+    fetchRecentMessages()
+  }, [userId])
+
   const handleNewProject = () => navigate('/projects')
   const handleNewTask = () => navigate('/tasks')
+  const handleViewMessages = () => navigate('/notifications')
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -274,14 +306,49 @@ export default function DashboardPage() {
       </div>
 
       {/* Messages Widget */}
-      <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '20px', maxWidth: '600px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <MessageCircle size={20} color="#1B2B4B" />
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Messages</h3>
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <MessageCircle size={20} color="#1B2B4B" />
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Messages</h2>
+          </div>
+          <Button variant="secondary" onClick={handleViewMessages}>View Messages</Button>
         </div>
-        <div style={{ color: '#888', fontSize: '14px' }}>
-          Messages widget coming soon...
-        </div>
+
+        {loadingMessages ? (
+          <div style={{ padding: '30px', textAlign: 'center', color: '#888' }}>Loading messages...</div>
+        ) : recentMessages.length === 0 ? (
+          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+            <p style={{ color: '#666', marginBottom: '12px' }}>No recent message threads.</p>
+          </div>
+        ) : (
+          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', overflow: 'hidden' }}>
+            {recentMessages.map(thread => (
+              <div 
+                key={thread.id} 
+                onClick={() => navigate(`/projects/${thread.project_id}`)}
+                style={{
+                  padding: '14px 20px',
+                  borderBottom: `1px solid #ECEAE4`,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: '500' }}>{thread.title}</div>
+                  {thread.projects?.name && (
+                    <div style={{ fontSize: '12px', color: '#888' }}>{thread.projects.name}</div>
+                  )}
+                </div>
+                <div style={{ fontSize: '12px', color: '#888' }}>
+                  {new Date(thread.updated_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

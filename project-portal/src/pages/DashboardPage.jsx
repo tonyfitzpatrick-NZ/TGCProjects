@@ -151,7 +151,7 @@ export default function DashboardPage() {
     fetchRecentMessages()
   }, [userId])
 
-  const handleNewProject = () => navigate('/projects')
+  const handleNewProject = () => setShowNewProjectModal(true)
  const handleNewTask = () => {
   setShowCreateTaskModal(true)
 }

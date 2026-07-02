@@ -116,34 +116,34 @@ export default function DashboardPage() {
     fetchUpcomingDeadlines()
   }, [userId])
 
-  // Fetch Recent Messages (from message_threads)
+  // Fetch Recent Messages (excluding archived)
   useEffect(() => {
     if (!userId) return
 
     const fetchRecentMessages = async () => {
-  setLoadingMessages(true)
-  try {
-    const { data, error } = await supabase
-      .from('message_threads')
-      .select(`
-        id,
-        title,
-        updated_at,
-        project_id,
-        follow_up,
-        projects:project_id (name)
-      `)
-      .eq('archived', false)                    // ← Exclude archived threads
-      .order('updated_at', { ascending: false })
-      .limit(6)
+      setLoadingMessages(true)
+      try {
+        const { data, error } = await supabase
+          .from('message_threads')
+          .select(`
+            id,
+            title,
+            updated_at,
+            project_id,
+            follow_up,
+            projects:project_id (name)
+          `)
+          .eq('archived', false)
+          .order('updated_at', { ascending: false })
+          .limit(6)
 
-    if (!error) setRecentMessages(data || [])
-  } catch (err) {
-    console.error('Error fetching messages:', err)
-  } finally {
-    setLoadingMessages(false)
-  }
-}
+        if (!error) setRecentMessages(data || [])
+      } catch (err) {
+        console.error('Error fetching messages:', err)
+      } finally {
+        setLoadingMessages(false)
+      }
+    }
     fetchRecentMessages()
   }, [userId])
 
@@ -307,67 +307,67 @@ export default function DashboardPage() {
         </div>
       </div>
 
-{/* Messages Widget */}
-<div style={{ marginBottom: '32px' }}>
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <MessageCircle size={20} color="#1B2B4B" />
-      <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Messages</h2>
-    </div>
-    <Button variant="secondary" onClick={handleViewMessages}>View Messages</Button>
-  </div>
-
-  {loadingMessages ? (
-    <div style={{ padding: '30px', textAlign: 'center', color: '#888' }}>Loading messages...</div>
-  ) : recentMessages.length === 0 ? (
-    <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
-      <p style={{ color: '#666', marginBottom: '12px' }}>No active message threads.</p>
-    </div>
-  ) : (
-    <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', overflow: 'hidden' }}>
-      {recentMessages.map(thread => (
-        <div 
-          key={thread.id} 
-          onClick={() => navigate(`/projects/${thread.project_id}`)}
-          style={{
-            padding: '14px 20px',
-            borderBottom: `1px solid #ECEAE4`,
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: thread.follow_up ? '#FFF8E6' : 'white'   // Highlight follow-up threads
-          }}
-        >
+      {/* Messages Widget */}
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div>
-              <div style={{ fontWeight: '500' }}>{thread.title}</div>
-              {thread.projects?.name && (
-                <div style={{ fontSize: '12px', color: '#888' }}>{thread.projects.name}</div>
-              )}
-            </div>
-            {thread.follow_up && (
-              <span style={{
-                fontSize: '11px',
-                padding: '1px 8px',
-                borderRadius: '10px',
-                background: '#FEE2C7',
-                color: '#9F4F0A',
-                fontWeight: '500'
-              }}>
-                Follow-up
-              </span>
-            )}
+            <MessageCircle size={20} color="#1B2B4B" />
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Messages</h2>
           </div>
-
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            {new Date(thread.updated_at).toLocaleDateString()}
-          </div>
+          <Button variant="secondary" onClick={handleViewMessages}>View Messages</Button>
         </div>
-      ))}
-    </div>
-  )}
-</div>
+
+        {loadingMessages ? (
+          <div style={{ padding: '30px', textAlign: 'center', color: '#888' }}>Loading messages...</div>
+        ) : recentMessages.length === 0 ? (
+          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+            <p style={{ color: '#666', marginBottom: '12px' }}>No active message threads.</p>
+          </div>
+        ) : (
+          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', overflow: 'hidden' }}>
+            {recentMessages.map(thread => (
+              <div 
+                key={thread.id} 
+                onClick={() => navigate(`/projects/${thread.project_id}`)}
+                style={{
+                  padding: '14px 20px',
+                  borderBottom: `1px solid #ECEAE4`,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: thread.follow_up ? '#FFF8E6' : 'white'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div>
+                    <div style={{ fontWeight: '500' }}>{thread.title}</div>
+                    {thread.projects?.name && (
+                      <div style={{ fontSize: '12px', color: '#888' }}>{thread.projects.name}</div>
+                    )}
+                  </div>
+                  {thread.follow_up && (
+                    <span style={{
+                      fontSize: '11px',
+                      padding: '1px 8px',
+                      borderRadius: '10px',
+                      background: '#FEE2C7',
+                      color: '#9F4F0A',
+                      fontWeight: '500'
+                    }}>
+                      Follow-up
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '12px', color: '#888' }}>
+                  {new Date(thread.updated_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -23,8 +23,6 @@ export default function Layout({ children }) {
   const initials = profile?.avatar_initials ||
     profile?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
 
-  // Mark an area as seen the moment the user actually lands on
-  // its page — clears the badge as soon as they're looking at it.
   useEffect(() => {
     if (location.pathname === '/notifications') markSeen('messages')
     if (location.pathname === '/tasks') markSeen('tasks')
@@ -63,22 +61,22 @@ export default function Layout({ children }) {
       {/* Sidebar */}
       <div style={{ width: '210px', flexShrink: 0, background: NAVY, display: 'flex', flexDirection: 'column' }}>
 
-        {/* Logo */}
-<div 
-  onClick={() => navigate('/')}
-  style={{ 
-    padding: '16px 16px 14px', 
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
-    cursor: 'pointer'
-  }}
->
-  <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 12px', display: 'inline-flex', alignItems: 'center' }}>
-    <img src={logo} alt="TGC Homes" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
-  </div>
-  <div style={{ fontSize: '11px', color: GOLD, marginTop: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '500' }}>
-    Project Portal
-  </div>
-</div>
+        {/* Logo - Clickable → Dashboard */}
+        <div 
+          onClick={() => navigate('/')}
+          style={{ 
+            padding: '16px 16px 14px', 
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            cursor: 'pointer'
+          }}
+        >
+          <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 12px', display: 'inline-flex', alignItems: 'center' }}>
+            <img src={logo} alt="TGC Homes" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
+          </div>
+          <div style={{ fontSize: '11px', color: GOLD, marginTop: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '500' }}>
+            Project Portal
+          </div>
+        </div>
 
         {/* Nav */}
         <div style={{ flex: 1, paddingTop: '8px', overflowY: 'auto' }}>

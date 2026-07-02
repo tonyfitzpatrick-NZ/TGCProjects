@@ -1,10 +1,10 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Full version with EmptyState component + ConfirmModal + FormField + Button
+// Full version with improved Loading States + Visual Consistency
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Edit2, Check, X, ChevronDown, ChevronRight, FolderOpen, Package } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X, ChevronDown, ChevronRight, FolderOpen, Package, Loader } from 'lucide-react'
 import {
   fetchGroups,
   fetchItemsWithProducts,
@@ -90,7 +90,10 @@ export default function ScheduleAdminPanel() {
       {error && <ErrorMsg msg={error} onClose={() => setError(null)} />}
 
       {loading ? (
-        <LoadingMsg />
+        <div style={{ padding: '60px 20px', textAlign: 'center', color: '#888' }}>
+          <Loader size={28} className="spin" style={{ marginBottom: '12px' }} />
+          <div style={{ fontSize: '14px' }}>Loading schedule library…</div>
+        </div>
       ) : tab === 'groups' ? (
         <GroupsTab 
           groups={groups} 
@@ -780,7 +783,6 @@ function IconBtn({ icon, onClick, title, danger }) {
                  style={{ background: 'none', border: `1px solid ${danger ? '#fecaca' : BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: danger ? '#dc2626' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</button>
 }
 
-function LoadingMsg() { return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div> }
 function ErrorMsg({ msg, onClose }) {
   return <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
     <span style={{ flex: 1 }}>{msg}</span>

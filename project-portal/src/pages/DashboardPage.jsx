@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import Button from '../components/common/Button'
 import { Link, useNavigate } from 'react-router-dom'
 import CreateTaskModal from '../components/common/CreateTaskModal'
+import NewProjectModal from '../components/NewProjectModal'
 
 const NAVY = '#1B2B4B'
 
@@ -17,6 +18,7 @@ export default function DashboardPage() {
   const [loadingDeadlines, setLoadingDeadlines] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(true)
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false)
   const navigate = useNavigate()
 
   const [userId, setUserId] = useState(null)
@@ -173,9 +175,9 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <Button onClick={handleNewProject}>
-            <Plus size={16} /> New Project
-          </Button>
+          <Button onClick={() => setShowNewProjectModal(true)}>
+  <Plus size={16} /> New Project
+</Button>
           <Button variant="secondary" onClick={handleNewTask}>
             New Task
           </Button>
@@ -379,6 +381,14 @@ export default function DashboardPage() {
     // Refresh tasks and deadlines after creating a new task
     setShowCreateTaskModal(false)
     // You can add functions here later to re-fetch myTasks and upcomingDeadlines if needed
+  }}
+/>
+<NewProjectModal
+  isOpen={showNewProjectModal}
+  onClose={() => setShowNewProjectModal(false)}
+  onProjectCreated={() => {
+    setShowNewProjectModal(false)
+    // Optional: You can add logic here later to refresh the Active Projects list
   }}
 />
     </div>

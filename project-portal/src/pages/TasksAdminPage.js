@@ -206,8 +206,46 @@ export default function TasksAdminPage() {
       </div>
 
       {/* Table */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
-        {loading ? <div style={S.empty}>Loading tasks…</div> : sorted.length === 0 ? <div style={S.empty}>No tasks found.</div> : (
+<div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
+  {loading ? (
+    <div style={S.empty}>Loading tasks…</div>
+  ) : sorted.length === 0 ? (
+    <div style={{ 
+      padding: '60px 20px', 
+      textAlign: 'center', 
+      color: '#666' 
+    }}>
+      {tasks.length === 0 ? (
+        // No tasks exist at all
+        <div>
+          <p style={{ fontSize: '16px', marginBottom: '8px' }}>No tasks yet</p>
+          <p style={{ fontSize: '14px', color: '#888', marginBottom: '20px' }}>
+            Get started by creating your first task.
+          </p>
+          <Button onClick={() => setShowCreateTaskModal(true)}>
+            <Plus size={16} /> Create your first task
+          </Button>
+        </div>
+      ) : (
+        // Tasks exist but filters hide them all
+        <div>
+          <p style={{ fontSize: '16px', marginBottom: '8px' }}>No tasks match your filters</p>
+          <p style={{ fontSize: '14px', color: '#888', marginBottom: '20px' }}>
+            Try adjusting your search or filters.
+          </p>
+          <Button variant="secondary" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        </div>
+      )}
+    </div>
+  ) : (
+    // Show the table when there are results
+    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px' }}>
+      {/* ... keep your existing table code here ... */}
+    </table>
+  )}
+</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px' }}>
             <thead>
               <tr>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { TASK_STATUSES, TASK_STATUS_COLORS, STAGES } from '../lib/constants'
-import { Search, AlertTriangle, Clock, Link2, ChevronRight, Plus } from 'lucide-react'
+import { Search, AlertTriangle, Clock, Link2, ChevronRight, Plus, X } from 'lucide-react'
 import { format, isPast, differenceInDays, parseISO } from 'date-fns'
 import CreateTaskModal from '../components/common/CreateTaskModal'
 import Button from '../components/common/Button'
@@ -33,32 +33,33 @@ export default function TasksAdminPage() {
     }
 
     const rawTasks = data || []
-
-    // Resolve "depends_on" -> task title/status
     const byId = {}
     rawTasks.forEach(t => { byId[t.id] = t })
-    const missingIds = [...new Set(
-      rawTasks.map(t => t.depends_on).filter(id => id && !byId[id])
-    )]
+    const missingIds = [...new Set(rawTasks.map(t => t.depends_on).filter(id => id && !byId[id]))]
     if (missingIds.length > 0) {
-      const { data: extra, error: extraErr } = await supabase
-        .from('tasks').select('id,title,status').in('id', missingIds)
-      if (extraErr) console.error('fetchTasks depends_on lookup error:', extraErr)
+      const { data: extra } = await supabase.from('tasks').select('id,title,status').in('id', missingIds)
       ;(extra || []).forEach(t => { byId[t.id] = t })
     }
     const tasksWithDeps = rawTasks.map(t => ({
       ...t,
       depends_on_task: t.depends_on ? byId[t.depends_on] || null : null
     }))
-
     setTasks(tasksWithDeps)
     setLoading(false)
   }
 
-  // Refresh tasks after creating a new one
   const handleTaskCreated = () => {
     setShowCreateTaskModal(false)
     fetchTasks()
+  }
+
+  // Check if any filter is active
+  const hasActiveFilters = search || filterStatus !== 'All' || filterStage !== 'All'
+
+  const clearFilters = () => {
+    setSearch('')
+    setFilterStatus('All')
+    setFilterStage('All')
   }
 
   const filtered = tasks.filter(t => {
@@ -149,9 +150,21 @@ export default function TasksAdminPage() {
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <span style={{ fontSize: '11px', color: '#bbb' }}>Status:</span>
           {['All', ...TASK_STATUSES].map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)} style={{ ...S.chip, background: filterStatus === s ? '#1B2B4B' : 'transparent', color: filterStatus === s ? '#fff' : '#666', border: `0.5px solid ${filterStatus === s ? '#1B2B4B' : '#D0CEC6'}` }}>{s}</button>
+            <button 
+              key={s} 
+              onClick={() => setFilterStatus(s)} 
+              style={{ 
+                ...S.chip, 
+                background: filterStatus === s ? '#1B2B4B' : 'transparent', 
+                color: filterStatus === s ? '#fff' : '#666',
+                border: `0.5px solid ${filterStatus === s ? '#1B2B4B' : '#D0CEC6'}`
+              }}
+            >
+              {s}
+            </button>
           ))}
         </div>
+
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <span style={{ fontSize: '11px', color: '#bbb' }}>Stage:</span>
           <select style={{ ...S.select }} value={filterStage} onChange={e => setFilterStage(e.target.value)}>
@@ -159,6 +172,22 @@ export default function TasksAdminPage() {
             {STAGES.map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
+
+        {/* Clear filters button */}
+        {hasActiveFilters && (
+          <button 
+            onClick={clearFilters} 
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '4px', 
+              padding: '4px 10px', borderRadius: '20px', fontSize: '11px',
+              background: 'transparent', color: '#666', border: '0.5px solid #D0CEC6',
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}
+          >
+            <X size={12} /> Clear filters
+          </button>
+        )}
+
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginLeft: 'auto' }}>
           <span style={{ fontSize: '11px', color: '#bbb' }}>Sort:</span>
           <select style={S.select} value={sortBy} onChange={e => setSortBy(e.target.value)}>
@@ -168,6 +197,12 @@ export default function TasksAdminPage() {
             <option value="project">Project</option>
           </select>
         </div>
+      </div>
+
+      {/* Result count */}
+      <div style={{ padding: '8px 20px 4px', fontSize: '12px', color: '#888' }}>
+        Showing <strong>{sorted.length}</strong> of <strong>{tasks.length}</strong> tasks
+        {hasActiveFilters && <span style={{ color: '#aaa' }}> (filtered)</span>}
       </div>
 
       {/* Table */}
@@ -241,12 +276,11 @@ const S = {
   topbar: { padding: '14px 20px', borderBottom: '0.5px solid #ECEAE4', display: 'flex', alignItems: 'center', gap: '12px' },
   title: { fontSize: '16px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '-0.02em', flex: 1 },
   searchWrap: { position: 'relative' },
-  searchInput: { padding: '7px 10px 7px 28px', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#FAFAF8', fontFamily: 'inherit', color: '#1a1a1a', width: '240px' },
-  chip: { padding: '3px 10px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' },
-  select: { padding: '4px 8px', border: '0.5px solid #D0CEC6', borderRadius: '7px', fontSize: '12px', background: '#FAFAF8', fontFamily: 'inherit', color: '#444' },
+  searchInput: { padding: '7px 10px 7px 28px', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#FAFAF8', fontFamily: 'inherit', color: '#1a1a1a', width: '260px' },
+  chip: { padding: '4px 12px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s' },
+  select: { padding: '5px 10px', border: '0.5px solid #D0CEC6', borderRadius: '7px', fontSize: '12px', background: '#FAFAF8', fontFamily: 'inherit', color: '#444' },
   th: { textAlign: 'left', fontSize: '10px', fontWeight: '500', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '10px 10px 6px', borderBottom: '0.5px solid #ECEAE4' },
   td: { padding: '10px', borderBottom: '0.5px solid #F3F1EB', verticalAlign: 'middle' },
   badge: { display: 'inline-block', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: '500' },
   empty: { padding: '60px', textAlign: 'center', color: '#aaa', fontSize: '14px' }
 }
-

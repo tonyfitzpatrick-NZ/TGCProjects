@@ -11,7 +11,6 @@ export default function DashboardPage() {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const navigate = useNavigate()
 
-  // Fetch active projects
   useEffect(() => {
     const fetchActiveProjects = async () => {
       setLoadingProjects(true)
@@ -23,26 +22,23 @@ export default function DashboardPage() {
           .order('updated_at', { ascending: false })
           .limit(6)
 
-        if (!error) {
-          setActiveProjects(data || [])
-        }
+        if (!error) setActiveProjects(data || [])
       } catch (err) {
-        console.error('Error fetching active projects:', err)
+        console.error(err)
       } finally {
         setLoadingProjects(false)
       }
     }
-
     fetchActiveProjects()
   }, [])
 
-  const handleAddProject = () => {
-    navigate('/projects') // You can change this later to open a create modal
+  const handleNewProject = () => {
+    navigate('/projects')
   }
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Welcome Header */}
+      {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>
           Good afternoon
@@ -58,7 +54,7 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <Button onClick={handleAddProject}>
+          <Button onClick={handleNewProject}>
             <Plus size={16} /> New Project
           </Button>
           <Button variant="secondary">
@@ -76,75 +72,37 @@ export default function DashboardPage() {
           <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>
             Active Projects
           </h2>
-          <Link 
-            to="/projects" 
-            style={{ 
-              fontSize: '14px', 
-              color: NAVY, 
-              textDecoration: 'none', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '4px' 
-            }}
-          >
+          <Link to="/projects" style={{ fontSize: '14px', color: NAVY, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
             View all <ArrowRight size={16} />
           </Link>
         </div>
 
         {loadingProjects ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
-            Loading projects...
-          </div>
+          <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Loading projects...</div>
         ) : activeProjects.length === 0 ? (
-          <div style={{ 
-            background: '#fff', 
-            border: `1px solid #ECEAE4`, 
-            borderRadius: '12px', 
-            padding: '32px', 
-            textAlign: 'center' 
-          }}>
+          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
             <p style={{ color: '#666', marginBottom: '16px' }}>You don't have any active projects yet.</p>
-            <Button onClick={handleAddProject}>
+            <Button onClick={handleNewProject}>
               <Plus size={16} /> Create your first project
             </Button>
           </div>
         ) : (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-            gap: '16px' 
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
             {activeProjects.map(project => (
-              <Link 
-                key={project.id} 
-                to={`/projects/${project.id}`}
-                style={{ textDecoration: 'none', color: 'inherit' }}
-              >
+              <Link key={project.id} to={`/projects/${project.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
                   background: '#fff',
                   border: `1px solid #ECEAE4`,
                   borderRadius: '10px',
                   padding: '18px',
-                  transition: 'all 0.2s ease',
                   cursor: 'pointer'
                 }}>
                   <div style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a1a', marginBottom: '6px' }}>
                     {project.name}
                   </div>
-                  
-                  {project.client_name && (
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                      {project.client_name}
-                    </div>
-                  )}
-                  
-                  {project.location && (
-                    <div style={{ fontSize: '13px', color: '#888', marginBottom: '12px' }}>
-                      {project.location}
-                    </div>
-                  )}
-
-                  <div style={{ 
+                  {project.client_name && <div style={{ fontSize: '13px', color: '#666' }}>{project.client_name}</div>}
+                  {project.location && <div style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>{project.location}</div>}
+                  <div style={{
                     display: 'inline-block',
                     fontSize: '12px',
                     padding: '3px 10px',
@@ -162,44 +120,31 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Bottom Row Widgets */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-        gap: '24px' 
-      }}>
+      {/* Bottom Widgets */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
         
-        {/* My Tasks */}
         <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
             <CheckSquare size={20} color="#1B2B4B" />
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>My Tasks</h3>
           </div>
-          <div style={{ color: '#888', fontSize: '14px' }}>
-            Task widget coming soon...
-          </div>
+          <div style={{ color: '#888', fontSize: '14px' }}>Task widget coming soon...</div>
         </div>
 
-        {/* Upcoming Deadlines */}
         <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
             <Calendar size={20} color="#1B2B4B" />
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Upcoming Deadlines</h3>
           </div>
-          <div style={{ color: '#888', fontSize: '14px' }}>
-            Deadlines widget coming soon...
-          </div>
+          <div style={{ color: '#888', fontSize: '14px' }}>Deadlines widget coming soon...</div>
         </div>
 
-        {/* Messages Widget */}
         <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
             <MessageCircle size={20} color="#1B2B4B" />
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Messages</h3>
           </div>
-          <div style={{ color: '#888', fontSize: '14px' }}>
-            Messages widget coming soon...
-          </div>
+          <div style={{ color: '#888', fontSize: '14px' }}>Messages widget coming soon...</div>
         </div>
 
       </div>

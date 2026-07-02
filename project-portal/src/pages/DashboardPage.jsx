@@ -17,10 +17,11 @@ export default function DashboardPage() {
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [loadingDeadlines, setLoadingDeadlines] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(true)
+
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
-  const navigate = useNavigate()
 
+  const navigate = useNavigate()
   const [userId, setUserId] = useState(null)
 
   useEffect(() => {
@@ -120,7 +121,7 @@ export default function DashboardPage() {
     fetchUpcomingDeadlines()
   }, [userId])
 
-  // Fetch Recent Messages (excluding archived)
+  // Fetch Recent Messages
   useEffect(() => {
     if (!userId) return
 
@@ -151,10 +152,7 @@ export default function DashboardPage() {
     fetchRecentMessages()
   }, [userId])
 
-  const handleNewProject = () => setShowNewProjectModal(true)
- const handleNewTask = () => {
-  setShowCreateTaskModal(true)
-}
+  const handleNewTask = () => setShowCreateTaskModal(true)
   const handleViewMessages = () => navigate('/notifications')
 
   return (
@@ -176,8 +174,8 @@ export default function DashboardPage() {
         </h2>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <Button onClick={() => setShowNewProjectModal(true)}>
-  <Plus size={16} /> New Project
-</Button>
+            <Plus size={16} /> New Project
+          </Button>
           <Button variant="secondary" onClick={handleNewTask}>
             New Task
           </Button>
@@ -203,7 +201,7 @@ export default function DashboardPage() {
         ) : activeProjects.length === 0 ? (
           <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
             <p style={{ color: '#666', marginBottom: '16px' }}>You don't have any active projects yet.</p>
-            <Button onClick={handleNewProject}>Create your first project</Button>
+            <Button onClick={() => setShowNewProjectModal(true)}>Create your first project</Button>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
@@ -365,7 +363,6 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </div>
-
                 <div style={{ fontSize: '12px', color: '#888' }}>
                   {new Date(thread.updated_at).toLocaleDateString()}
                 </div>
@@ -374,23 +371,19 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
       <CreateTaskModal
-  isOpen={showCreateTaskModal}
-  onClose={() => setShowCreateTaskModal(false)}
-  onTaskCreated={() => {
-    // Refresh tasks and deadlines after creating a new task
-    setShowCreateTaskModal(false)
-    // You can add functions here later to re-fetch myTasks and upcomingDeadlines if needed
-  }}
-/>
-<NewProjectModal
-  isOpen={showNewProjectModal}
-  onClose={() => setShowNewProjectModal(false)}
-  onProjectCreated={() => {
-    setShowNewProjectModal(false)
-    // Optional: You can add logic here later to refresh the Active Projects list
-  }}
-/>
+        isOpen={showCreateTaskModal}
+        onClose={() => setShowCreateTaskModal(false)}
+        onTaskCreated={() => setShowCreateTaskModal(false)}
+      />
+
+      <NewProjectModal
+        isOpen={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        onProjectCreated={() => setShowNewProjectModal(false)}
+      />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Full updated version with reusable FormField + Button
+// Full version with ConfirmModal + FormField + Button + CBI
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { useToast } from '../Toast/ToastContext'
 import FormField from '../common/FormField'
 import Button from '../common/Button'
+import ConfirmModal from '../common/ConfirmModal'
 
 const NAVY   = '#1B2B4B'
 const GOLD   = '#B8952A'
@@ -38,6 +39,14 @@ export default function ScheduleAdminPanel() {
   const [error,    setError]    = useState(null)
 
   const { showToast } = useToast()
+
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -83,18 +92,43 @@ export default function ScheduleAdminPanel() {
       {loading ? (
         <LoadingMsg />
       ) : tab === 'groups' ? (
-        <GroupsTab groups={groups} items={items} products={products} reload={load} setError={setError} showToast={showToast} />
+        <GroupsTab 
+          groups={groups} 
+          items={items} 
+          products={products} 
+          reload={load} 
+          setError={setError} 
+          showToast={showToast}
+          setConfirmModal={setConfirmModal}
+        />
       ) : (
-        <ProductsTab groups={groups} items={items} products={products} reload={load} setError={setError} showToast={showToast} />
+        <ProductsTab 
+          groups={groups} 
+          items={items} 
+          products={products} 
+          reload={load} 
+          setError={setError} 
+          showToast={showToast}
+          setConfirmModal={setConfirmModal}
+        />
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
+      />
     </div>
   )
 }
 
 // ============================================================
-// GROUPS & ITEMS TAB (Full original functionality)
+// GROUPS & ITEMS TAB
 // ============================================================
-function GroupsTab({ groups, items, products, reload, setError, showToast }) {
+function GroupsTab({ groups, items, products, reload, setError, showToast, setConfirmModal }) {
   const [expandedGroup, setExpandedGroup] = useState({})
   const [expandedItem,  setExpandedItem]  = useState({})
   const [editGroup,     setEditGroup]     = useState(null)
@@ -140,16 +174,22 @@ function GroupsTab({ groups, items, products, reload, setError, showToast }) {
   }
 
   async function handleDeleteGroup(id, name) {
-    if (!window.confirm(`Delete group "${name}"? All items in this group will also be deleted.`)) return
-    try { 
-      await deleteGroup(id)
-      await reload()
-      showToast('Group deleted', 'success')
-    }
-    catch (e) { 
-      setError(e.message)
-      showToast(e.message, 'error')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Group?',
+      message: `Are you sure you want to delete "${name}"? All items in this group will also be deleted.`,
+      onConfirm: async () => {
+        try {
+          await deleteGroup(id)
+          await reload()
+          showToast('Group deleted', 'success')
+        } catch (e) {
+          setError(e.message)
+          showToast(e.message, 'error')
+        }
+        setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+      }
+    })
   }
 
   async function saveItem() {
@@ -173,16 +213,22 @@ function GroupsTab({ groups, items, products, reload, setError, showToast }) {
   }
 
   async function handleDeleteItem(id, name) {
-    if (!window.confirm(`Delete item "${name}"?`)) return
-    try { 
-      await deleteItem(id)
-      await reload()
-      showToast('Item deleted', 'success')
-    }
-    catch (e) { 
-      setError(e.message)
-      showToast(e.message, 'error')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Item?',
+      message: `Are you sure you want to delete "${name}"?`,
+      onConfirm: async () => {
+        try {
+          await deleteItem(id)
+          await reload()
+          showToast('Item deleted', 'success')
+        } catch (e) {
+          setError(e.message)
+          showToast(e.message, 'error')
+        }
+        setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+      }
+    })
   }
 
   async function toggleAssign(itemId, productId, isCurrentlyAssigned) {
@@ -217,9 +263,9 @@ function GroupsTab({ groups, items, products, reload, setError, showToast }) {
   return (
     <div>
       <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <button onClick={() => setEditGroup({ name: '', description: '', sort_order: groups.length })} style={btnPrimary}>
-          <Plus size={13} /> Add group
-        </button>
+        <Button onClick={() => setEditGroup({ name: '', description: '', sort_order: groups.length })}>
+          <Plus size={14} /> Add group
+        </Button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
           <span style={{ fontSize: '11px', color: '#aaa' }}>Sort items by:</span>
           {[
@@ -364,11 +410,9 @@ function GroupsTab({ groups, items, products, reload, setError, showToast }) {
                 {editItem?.group_id === group.id && !editItem.id ? (
                   <ItemForm value={editItem} groups={groups} onChange={setEditItem} onSave={saveItem} onCancel={() => setEditItem(null)} saving={saving} />
                 ) : (
-                  <button
-                    onClick={() => setEditItem({ name: '', description: '', group_id: group.id, sort_order: groupItems.length, cbi_code: '', exclude_from_spec: false })}
-                    style={{ fontSize: '12px', color: NAVY, background: 'none', border: `1px dashed ${BORDER}`, borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
-                    <Plus size={11}/> Add item
-                  </button>
+                  <Button variant="ghost" onClick={() => setEditItem({ name: '', description: '', group_id: group.id, sort_order: groupItems.length, cbi_code: '', exclude_from_spec: false })}>
+                    <Plus size={13} /> Add item
+                  </Button>
                 )}
               </div>
             )}
@@ -380,9 +424,9 @@ function GroupsTab({ groups, items, products, reload, setError, showToast }) {
 }
 
 // ============================================================
-// PRODUCTS TAB (Updated with FormField + Button)
+// PRODUCTS TAB
 // ============================================================
-function ProductsTab({ groups, items, products, reload, setError, showToast }) {
+function ProductsTab({ groups, items, products, reload, setError, showToast, setConfirmModal }) {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -466,15 +510,22 @@ function ProductsTab({ groups, items, products, reload, setError, showToast }) {
   }
 
   async function handleDelete(id, name) {
-    if (!window.confirm(`Delete product "${name}"?`)) return
-    try {
-      await deleteProduct(id)
-      await reload()
-      showToast('Product deleted', 'success')
-    } catch (e) {
-      setError(e.message)
-      showToast(e.message, 'error')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Product?',
+      message: `Are you sure you want to delete "${name}"? It will be removed from all item assignments.`,
+      onConfirm: async () => {
+        try {
+          await deleteProduct(id)
+          await reload()
+          showToast('Product deleted', 'success')
+        } catch (e) {
+          setError(e.message)
+          showToast(e.message, 'error')
+        }
+        setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+      }
+    })
   }
 
   return (
@@ -537,9 +588,7 @@ function ProductsTab({ groups, items, products, reload, setError, showToast }) {
   )
 }
 
-// ============================================================
-// PRODUCT FORM (Updated with FormField + Button)
-// ============================================================
+// ProductForm (already updated with FormField + Button)
 function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSave, onCancel, saving }) {
   function toggleItemAssignment(itemId) {
     onChange(v => {
@@ -552,30 +601,15 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
   return (
     <div style={{ background: '#EEF1F6', borderRadius: '10px', padding: '18px', marginBottom: '16px' }}>
       <FormField label="Product Name" required>
-        <input
-          autoFocus
-          placeholder="Product name"
-          value={value.name}
-          onChange={e => onChange(v => ({ ...v, name: e.target.value }))}
-          style={inputStyle}
-        />
+        <input autoFocus placeholder="Product name" value={value.name} onChange={e => onChange(v => ({ ...v, name: e.target.value }))} style={inputStyle} />
       </FormField>
 
       <FormField label="Manufacturer">
-        <input
-          placeholder="Manufacturer"
-          value={value.manufacturer || ''}
-          onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))}
-          style={inputStyle}
-        />
+        <input placeholder="Manufacturer" value={value.manufacturer || ''} onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))} style={inputStyle} />
       </FormField>
 
-      <FormField label="CBI Category" required helper="Link this product to a CBI classification for specification generation">
-        <select
-          value={value.cbi_category_id || ''}
-          onChange={e => onChange(v => ({ ...v, cbi_category_id: e.target.value || null }))}
-          style={inputStyle}
-        >
+      <FormField label="CBI Category" required helper="Link this product to a CBI classification">
+        <select value={value.cbi_category_id || ''} onChange={e => onChange(v => ({ ...v, cbi_category_id: e.target.value || null }))} style={inputStyle}>
           <option value="">— Unassigned —</option>
           {cbiCategories.map(cat => (
             <option key={cat.id} value={cat.id}>
@@ -604,7 +638,7 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
           <input type="checkbox" checked={value.is_active !== false} onChange={e => onChange(v => ({ ...v, is_active: e.target.checked }))} />
-          Active (visible for selection on projects)
+          Active
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
           <input type="checkbox" checked={!!value.needs_own_spec_section} onChange={e => onChange(v => ({ ...v, needs_own_spec_section: e.target.checked }))} />
@@ -612,7 +646,7 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
         </label>
       </div>
 
-      <FormField label="Assign to Items" helper="Select which schedule items this product can be used for">
+      <FormField label="Assign to Items">
         {items.length === 0 ? (
           <div style={{ fontSize: '13px', color: '#aaa' }}>No items in the library yet.</div>
         ) : (
@@ -643,15 +677,13 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
         <Button onClick={onSave} disabled={saving || !value.name?.trim()}>
           {saving ? 'Saving…' : value.id ? 'Save changes' : 'Add product'}
         </Button>
-        <Button variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   )
 }
 
-// ProductRow (unchanged for now)
+// ProductRow
 function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) {
   const linkedCbi = cbiCategories.find(cat => cat.id === p.cbi_category_id)
 
@@ -678,7 +710,7 @@ function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) {
   )
 }
 
-// Shared components (GroupForm, ItemForm, etc.)
+// Shared components
 function GroupForm({ value, onChange, onSave, onCancel, saving }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '8px', padding: '12px' }}>
@@ -718,78 +750,22 @@ function ItemForm({ value, groups, onChange, onSave, onCancel, saving }) {
 }
 
 function LinkChip({ href, label }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-       style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '4px', background: '#EEF1F6', color: NAVY, textDecoration: 'none', fontWeight: '500' }}>
-      {label}
-    </a>
-  )
+  return <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+            style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '4px', background: '#EEF1F6', color: NAVY, textDecoration: 'none', fontWeight: '500' }}>{label}</a>
 }
 
 function IconBtn({ icon, onClick, title, danger }) {
-  return (
-    <button onClick={onClick} title={title}
-            style={{ background: 'none', border: `1px solid ${danger ? '#fecaca' : BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: danger ? '#dc2626' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      {icon}
-    </button>
-  )
+  return <button onClick={onClick} title={title}
+                 style={{ background: 'none', border: `1px solid ${danger ? '#fecaca' : BORDER}`, borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: danger ? '#dc2626' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</button>
 }
 
-function LoadingMsg() {
-  return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div>
-}
-
-function EmptyMsg({ children }) {
-  return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div>
-}
-
+function LoadingMsg() { return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div> }
+function EmptyMsg({ children }) { return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div> }
 function ErrorMsg({ msg, onClose }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
-      <span style={{ flex: 1 }}>{msg}</span>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#993C1D' }}><X size={13}/></button>
-    </div>
-  )
+  return <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
+    <span style={{ flex: 1 }}>{msg}</span>
+    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#993C1D' }}><X size={13}/></button>
+  </div>
 }
 
-const inputStyle = {
-  padding: '9px 12px',
-  border: `1px solid ${BORDER}`,
-  borderRadius: '7px',
-  fontSize: '14px',
-  fontFamily: 'inherit',
-  outline: 'none',
-  background: '#fff',
-  color: '#1a1a1a',
-  width: '100%',
-  boxSizing: 'border-box',
-}
-
-const btnPrimary = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '6px',
-  padding: '8px 16px',
-  background: NAVY,
-  color: '#fff',
-  border: 'none',
-  borderRadius: '8px',
-  fontSize: '13px',
-  fontWeight: '500',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-}
-
-const btnSecondary = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '6px',
-  padding: '8px 16px',
-  background: 'transparent',
-  color: '#555',
-  border: `1px solid ${BORDER}`,
-  borderRadius: '8px',
-  fontSize: '13px',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-}
+const inputStyle = { padding: '9px 12px', border: `1px solid ${BORDER}`, borderRadius: '7px', fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#1a1a1a', width: '100%', boxSizing: 'border-box' }

@@ -25,9 +25,10 @@ export default function TasksAdminPage() {
     const { data, error } = await supabase.from('tasks')
       .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles!tasks_assigned_user_id_fkey(id,full_name)')
       .order('deadline', { ascending: true, nullsFirst: false })
+
     if (error) {
       console.error('fetchTasks error:', error)
-      setFetchError(`Tasks query failed: ${error.message}${error.hint ? ' — Hint: ' + error.hint : ''}${error.details ? ' — Details: ' + error.details : ''}${error.code ? ' (code ' + error.code + ')' : ''}`)
+      setFetchError(`Tasks query failed: ${error.message}`)
     } else {
       setFetchError(null)
     }
@@ -35,15 +36,18 @@ export default function TasksAdminPage() {
     const rawTasks = data || []
     const byId = {}
     rawTasks.forEach(t => { byId[t.id] = t })
+
     const missingIds = [...new Set(rawTasks.map(t => t.depends_on).filter(id => id && !byId[id]))]
     if (missingIds.length > 0) {
       const { data: extra } = await supabase.from('tasks').select('id,title,status').in('id', missingIds)
       ;(extra || []).forEach(t => { byId[t.id] = t })
     }
+
     const tasksWithDeps = rawTasks.map(t => ({
       ...t,
       depends_on_task: t.depends_on ? byId[t.depends_on] || null : null
     }))
+
     setTasks(tasksWithDeps)
     setLoading(false)
   }
@@ -53,7 +57,6 @@ export default function TasksAdminPage() {
     fetchTasks()
   }
 
-  // Check if any filter is active
   const hasActiveFilters = search || filterStatus !== 'All' || filterStage !== 'All'
 
   const clearFilters = () => {
@@ -63,18 +66,22 @@ export default function TasksAdminPage() {
   }
 
   const filtered = tasks.filter(t => {
-    const matchSearch = t.title?.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch =
+      t.title?.toLowerCase().includes(search.toLowerCase()) ||
       t.projects?.name?.toLowerCase().includes(search.toLowerCase()) ||
       t.assigned_company?.name?.toLowerCase().includes(search.toLowerCase()) ||
       t.assigned_user?.full_name?.toLowerCase().includes(search.toLowerCase())
+
     const matchStatus = filterStatus === 'All' || t.status === filterStatus
     const matchStage = filterStage === 'All' || t.stage === filterStage || t.projects?.stage === filterStage
+
     return matchSearch && matchStatus && matchStage
   })
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'deadline') {
-      if (!a.deadline) return 1; if (!b.deadline) return -1
+      if (!a.deadline) return 1
+      if (!b.deadline) return -1
       return new Date(a.deadline) - new Date(b.deadline)
     }
     if (sortBy === 'status') return TASK_STATUSES.indexOf(a.status) - TASK_STATUSES.indexOf(b.status)
@@ -87,8 +94,10 @@ export default function TasksAdminPage() {
     if (!deadline) return null
     const d = parseISO(deadline)
     const days = differenceInDays(d, new Date())
-    if (isPast(d) && days < 0) return { color: '#A32D2D', label: `Overdue · ${format(d, 'd MMM')}`, Icon: AlertTriangle }
-    if (days <= 7) return { color: '#854F0B', label: `${format(d, 'd MMM')} · ${days}d`, Icon: Clock }
+    if (isPast(d) && days < 0)
+      return { color: '#A32D2D', label: `Overdue · ${format(d, 'd MMM')}`, Icon: AlertTriangle }
+    if (days <= 7)
+      return { color: '#854F0B', label: `${format(d, 'd MMM')} · ${days}d`, Icon: Clock }
     return { color: '#888', label: format(d, 'd MMM yyyy'), Icon: null }
   }
 
@@ -102,7 +111,6 @@ export default function TasksAdminPage() {
   }
 
   return (
-    <>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={S.topbar}>
         <div style={S.title}>All Tasks</div>
@@ -114,11 +122,11 @@ export default function TasksAdminPage() {
 
           <div style={S.searchWrap}>
             <Search size={13} color="#aaa" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
-            <input 
-              style={S.searchInput} 
-              placeholder="Search tasks, projects, companies…" 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
+            <input
+              style={S.searchInput}
+              placeholder="Search tasks, projects, companies…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
             />
           </div>
         </div>
@@ -136,8 +144,13 @@ export default function TasksAdminPage() {
 
       {/* Stats bar */}
       <div style={{ padding: '10px 20px', borderBottom: '0.5px solid #ECEAE4', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-        {[['Total', stats.total, '#666'], ['Open', stats.open, '#5F5E5A'], ['In Progress', stats.inProgress, '#185FA5'],
-          ['For Review', stats.forReview, '#854F0B'], ['Completed', stats.completed, '#0F6E56'], ['Overdue', stats.overdue, '#A32D2D']
+        {[
+          ['Total', stats.total, '#666'],
+          ['Open', stats.open, '#5F5E5A'],
+          ['In Progress', stats.inProgress, '#185FA5'],
+          ['For Review', stats.forReview, '#854F0B'],
+          ['Completed', stats.completed, '#0F6E56'],
+          ['Overdue', stats.overdue, '#A32D2D']
         ].map(([label, count, color]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ fontSize: '18px', fontWeight: '600', color }}>{count}</span>
@@ -151,12 +164,12 @@ export default function TasksAdminPage() {
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <span style={{ fontSize: '11px', color: '#bbb' }}>Status:</span>
           {['All', ...TASK_STATUSES].map(s => (
-            <button 
-              key={s} 
-              onClick={() => setFilterStatus(s)} 
-              style={{ 
-                ...S.chip, 
-                background: filterStatus === s ? '#1B2B4B' : 'transparent', 
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              style={{
+                ...S.chip,
+                background: filterStatus === s ? '#1B2B4B' : 'transparent',
                 color: filterStatus === s ? '#fff' : '#666',
                 border: `0.5px solid ${filterStatus === s ? '#1B2B4B' : '#D0CEC6'}`
               }}
@@ -174,12 +187,11 @@ export default function TasksAdminPage() {
           </select>
         </div>
 
-        {/* Clear filters button */}
         {hasActiveFilters && (
-          <button 
-            onClick={clearFilters} 
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '4px', 
+          <button
+            onClick={clearFilters}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
               padding: '4px 10px', borderRadius: '20px', fontSize: '11px',
               background: 'transparent', color: '#666', border: '0.5px solid #D0CEC6',
               cursor: 'pointer', fontFamily: 'inherit'
@@ -206,47 +218,40 @@ export default function TasksAdminPage() {
         {hasActiveFilters && <span style={{ color: '#aaa' }}> (filtered)</span>}
       </div>
 
-      {/* Table */}
-<div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
-  {loading ? (
-    <div style={S.empty}>Loading tasks…</div>
-  ) : sorted.length === 0 ? (
-    <div style={{ 
-      padding: '60px 20px', 
-      textAlign: 'center', 
-      color: '#666' 
-    }}>
-      {tasks.length === 0 ? (
-        // No tasks exist at all
-        <div>
-          <p style={{ fontSize: '16px', marginBottom: '8px' }}>No tasks yet</p>
-          <p style={{ fontSize: '14px', color: '#888', marginBottom: '20px' }}>
-            Get started by creating your first task.
-          </p>
-          <Button onClick={() => setShowCreateTaskModal(true)}>
-            <Plus size={16} /> Create your first task
-          </Button>
-        </div>
-      ) : (
-        // Tasks exist but filters hide them all
-        <div>
-          <p style={{ fontSize: '16px', marginBottom: '8px' }}>No tasks match your filters</p>
-          <p style={{ fontSize: '14px', color: '#888', marginBottom: '20px' }}>
-            Try adjusting your search or filters.
-          </p>
-          <Button variant="secondary" onClick={clearFilters}>
-            Clear filters
-          </Button>
-        </div>
-      )}
-    </div>
-  ) : (
-    // Show the table when there are results
-    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px' }}>
-      {/* ... keep your existing table code here ... */}
-    </table>
-  )}
-</div>
+      {/* Table + Empty State */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
+        {loading ? (
+          <div style={S.empty}>Loading tasks…</div>
+        ) : sorted.length === 0 ? (
+          // Improved Empty State
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: '#666' }}>
+            {tasks.length === 0 ? (
+              <div>
+                <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>
+                  No tasks yet
+                </p>
+                <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
+                  Get started by creating your first task.
+                </p>
+                <Button onClick={() => setShowCreateTaskModal(true)}>
+                  <Plus size={16} /> Create your first task
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>
+                  No tasks match your filters
+                </p>
+                <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
+                  Try adjusting your search or filters.
+                </p>
+                <Button variant="secondary" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px' }}>
             <thead>
               <tr>
@@ -307,7 +312,6 @@ export default function TasksAdminPage() {
         onClose={() => setShowCreateTaskModal(false)}
         onTaskCreated={handleTaskCreated}
       />
-      </>
     </div>
   )
 }

@@ -102,6 +102,7 @@ export default function TasksAdminPage() {
   }
 
   return (
+    <>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={S.topbar}>
         <div style={S.title}>All Tasks</div>
@@ -306,6 +307,7 @@ export default function TasksAdminPage() {
         onClose={() => setShowCreateTaskModal(false)}
         onTaskCreated={handleTaskCreated}
       />
+      </>
     </div>
   )
 }

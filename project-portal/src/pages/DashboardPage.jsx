@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Calendar, CheckSquare, Bell, Activity, ArrowRight } from 'lucide-react'
+import { Plus, Calendar, CheckSquare, Bell, Activity, ArrowRight, MessageCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import Button from '../components/common/Button'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const NAVY = '#1B2B4B'
 
 export default function DashboardPage() {
   const [activeProjects, setActiveProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
+  const navigate = useNavigate()
 
   // Fetch active projects
   useEffect(() => {
@@ -35,6 +36,10 @@ export default function DashboardPage() {
     fetchActiveProjects()
   }, [])
 
+  const handleAddProject = () => {
+    navigate('/projects') // You can change this later to open a create modal
+  }
+
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Welcome Header */}
@@ -53,7 +58,7 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <Button>
+          <Button onClick={handleAddProject}>
             <Plus size={16} /> New Project
           </Button>
           <Button variant="secondary">
@@ -99,7 +104,7 @@ export default function DashboardPage() {
             textAlign: 'center' 
           }}>
             <p style={{ color: '#666', marginBottom: '16px' }}>You don't have any active projects yet.</p>
-            <Button>
+            <Button onClick={handleAddProject}>
               <Plus size={16} /> Create your first project
             </Button>
           </div>
@@ -157,7 +162,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Other Widgets (Placeholders) */}
+      {/* Bottom Row Widgets */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
@@ -183,6 +188,17 @@ export default function DashboardPage() {
           </div>
           <div style={{ color: '#888', fontSize: '14px' }}>
             Deadlines widget coming soon...
+          </div>
+        </div>
+
+        {/* Messages Widget */}
+        <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <MessageCircle size={20} color="#1B2B4B" />
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Messages</h3>
+          </div>
+          <div style={{ color: '#888', fontSize: '14px' }}>
+            Messages widget coming soon...
           </div>
         </div>
 

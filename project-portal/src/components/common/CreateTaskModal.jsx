@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import Button from './Button'
 
 export default function CreateTaskModal({ isOpen, onClose, projectId = null, onTaskCreated }) {

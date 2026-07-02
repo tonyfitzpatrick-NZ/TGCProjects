@@ -1,6 +1,6 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Full working version with CBI Category + Toast integration
+// Full updated version with reusable FormField + Button
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -16,6 +16,8 @@ import {
 } from '../../lib/scheduleQueries'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../Toast/ToastContext'
+import FormField from '../common/FormField'
+import Button from '../common/Button'
 
 const NAVY   = '#1B2B4B'
 const GOLD   = '#B8952A'
@@ -378,7 +380,7 @@ function GroupsTab({ groups, items, products, reload, setError, showToast }) {
 }
 
 // ============================================================
-// PRODUCTS TAB (Full version with CBI Category)
+// PRODUCTS TAB (Updated with FormField + Button)
 // ============================================================
 function ProductsTab({ groups, items, products, reload, setError, showToast }) {
   const [editing, setEditing] = useState(null)
@@ -478,12 +480,12 @@ function ProductsTab({ groups, items, products, reload, setError, showToast }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-        <button onClick={() => setEditing({ ...EMPTY })} style={btnPrimary}>
-          <Plus size={13} /> Add product
-        </button>
-        <button onClick={() => setShowAll(s => !s)} style={btnSecondary}>
+        <Button onClick={() => setEditing({ ...EMPTY })}>
+          <Plus size={14} /> Add product
+        </Button>
+        <Button variant="secondary" onClick={() => setShowAll(s => !s)}>
           {showAll ? 'Hide inactive' : 'Show inactive'}
-        </button>
+        </Button>
         <span style={{ fontSize: '12px', color: '#aaa', marginLeft: 'auto' }}>
           {visibleProducts.length} product{visibleProducts.length !== 1 ? 's' : ''}
         </span>
@@ -535,7 +537,9 @@ function ProductsTab({ groups, items, products, reload, setError, showToast }) {
   )
 }
 
-// ProductForm with CBI Dropdown
+// ============================================================
+// PRODUCT FORM (Updated with FormField + Button)
+// ============================================================
 function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSave, onCancel, saving }) {
   function toggleItemAssignment(itemId) {
     onChange(v => {
@@ -546,20 +550,30 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <input autoFocus placeholder="Product name *" value={value.name} onChange={e => onChange(v => ({ ...v, name: e.target.value }))} style={{ ...inputStyle, flex: 2 }} />
-        <input placeholder="Manufacturer" value={value.manufacturer || ''} onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
-      </div>
+    <div style={{ background: '#EEF1F6', borderRadius: '10px', padding: '18px', marginBottom: '16px' }}>
+      <FormField label="Product Name" required>
+        <input
+          autoFocus
+          placeholder="Product name"
+          value={value.name}
+          onChange={e => onChange(v => ({ ...v, name: e.target.value }))}
+          style={inputStyle}
+        />
+      </FormField>
 
-      <div>
-        <label style={{ fontSize: '11px', fontWeight: '600', color: '#666', marginBottom: '4px', display: 'block' }}>
-          CBI Category <span style={{ color: '#c00' }}>*</span>
-        </label>
+      <FormField label="Manufacturer">
+        <input
+          placeholder="Manufacturer"
+          value={value.manufacturer || ''}
+          onChange={e => onChange(v => ({ ...v, manufacturer: e.target.value }))}
+          style={inputStyle}
+        />
+      </FormField>
+
+      <FormField label="CBI Category" required helper="Link this product to a CBI classification for specification generation">
         <select
           value={value.cbi_category_id || ''}
           onChange={e => onChange(v => ({ ...v, cbi_category_id: e.target.value || null }))}
-          required
           style={inputStyle}
         >
           <option value="">— Unassigned —</option>
@@ -569,42 +583,50 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
             </option>
           ))}
         </select>
+      </FormField>
+
+      <FormField label="Website URL">
+        <input placeholder="Website URL" value={value.url_website || ''} onChange={e => onChange(v => ({ ...v, url_website: e.target.value }))} style={inputStyle} />
+      </FormField>
+
+      <FormField label="BRANZ Appraisal URL">
+        <input placeholder="BRANZ Appraisal URL" value={value.url_branz_appraisal || ''} onChange={e => onChange(v => ({ ...v, url_branz_appraisal: e.target.value }))} style={inputStyle} />
+      </FormField>
+
+      <FormField label="CodeMark URL">
+        <input placeholder="CodeMark URL" value={value.url_codemark || ''} onChange={e => onChange(v => ({ ...v, url_codemark: e.target.value }))} style={inputStyle} />
+      </FormField>
+
+      <FormField label="Install Manual URL">
+        <input placeholder="Install Manual URL" value={value.url_install_manual || ''} onChange={e => onChange(v => ({ ...v, url_install_manual: e.target.value }))} style={inputStyle} />
+      </FormField>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
+          <input type="checkbox" checked={value.is_active !== false} onChange={e => onChange(v => ({ ...v, is_active: e.target.checked }))} />
+          Active (visible for selection on projects)
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!value.needs_own_spec_section} onChange={e => onChange(v => ({ ...v, needs_own_spec_section: e.target.checked }))} />
+          Needs its own dedicated specification section
+        </label>
       </div>
 
-      <input placeholder="Website URL" value={value.url_website || ''} onChange={e => onChange(v => ({ ...v, url_website: e.target.value }))} style={inputStyle} />
-      <input placeholder="BRANZ Appraisal URL" value={value.url_branz_appraisal || ''} onChange={e => onChange(v => ({ ...v, url_branz_appraisal: e.target.value }))} style={inputStyle} />
-      <input placeholder="CodeMark URL" value={value.url_codemark || ''} onChange={e => onChange(v => ({ ...v, url_codemark: e.target.value }))} style={inputStyle} />
-      <input placeholder="Install Manual URL" value={value.url_install_manual || ''} onChange={e => onChange(v => ({ ...v, url_install_manual: e.target.value }))} style={inputStyle} />
-
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
-        <input type="checkbox" checked={value.is_active !== false} onChange={e => onChange(v => ({ ...v, is_active: e.target.checked }))} />
-        Active (visible for selection on projects)
-      </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#444', cursor: 'pointer' }}>
-        <input type="checkbox" checked={!!value.needs_own_spec_section} onChange={e => onChange(v => ({ ...v, needs_own_spec_section: e.target.checked }))} />
-        Needs its own dedicated specification section
-      </label>
-
-      <div style={{ marginTop: '4px' }}>
-        <div style={{ fontSize: '11px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
-          Assign to items
-        </div>
+      <FormField label="Assign to Items" helper="Select which schedule items this product can be used for">
         {items.length === 0 ? (
-          <div style={{ fontSize: '12px', color: '#aaa' }}>No items in the library yet.</div>
+          <div style={{ fontSize: '13px', color: '#aaa' }}>No items in the library yet.</div>
         ) : (
-          <div style={{ maxHeight: '180px', overflowY: 'auto', border: `1px solid #D0CEC6`, borderRadius: '7px', background: '#fff' }}>
+          <div style={{ maxHeight: '200px', overflowY: 'auto', border: `1px solid #D0CEC6`, borderRadius: '8px', background: '#fff', padding: '8px' }}>
             {groups.map(group => {
               const groupItems = items.filter(i => i.group_id === group.id)
               if (groupItems.length === 0) return null
               return (
-                <div key={group.id}>
-                  <div style={{ fontSize: '10px', fontWeight: '600', color: '#aaa', textTransform: 'uppercase', padding: '6px 10px 2px', background: '#FAFAF8' }}>
-                    {group.name}
-                  </div>
+                <div key={group.id} style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#888', marginBottom: '4px' }}>{group.name}</div>
                   {groupItems.map(item => {
                     const isChecked = (value.assignedItemIds || []).includes(item.id)
                     return (
-                      <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px' }}>
+                      <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>
                         <input type="checkbox" checked={isChecked} onChange={() => toggleItemAssignment(item.id)} />
                         {item.name}
                       </label>
@@ -615,19 +637,21 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
             })}
           </div>
         )}
-      </div>
+      </FormField>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-        <button onClick={onSave} disabled={saving || !value.name?.trim()} style={btnSave}>
+      <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+        <Button onClick={onSave} disabled={saving || !value.name?.trim()}>
           {saving ? 'Saving…' : value.id ? 'Save changes' : 'Add product'}
-        </button>
-        <button onClick={onCancel} style={btnCancel}>Cancel</button>
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
       </div>
     </div>
   )
 }
 
-// ProductRow with CBI display
+// ProductRow (unchanged for now)
 function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) {
   const linkedCbi = cbiCategories.find(cat => cat.id === p.cbi_category_id)
 
@@ -654,7 +678,7 @@ function ProductRow({ product: p, onEdit, onDelete, cbiCategories = [] }) {
   )
 }
 
-// Shared components
+// Shared components (GroupForm, ItemForm, etc.)
 function GroupForm({ value, onChange, onSave, onCancel, saving }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#EEF1F6', borderRadius: '8px', padding: '12px' }}>
@@ -662,8 +686,8 @@ function GroupForm({ value, onChange, onSave, onCancel, saving }) {
       <input placeholder="Description (optional)" value={value.description} onChange={e => onChange(v => ({ ...v, description: e.target.value }))} style={inputStyle} />
       <input placeholder="Sort order" type="number" value={value.sort_order} onChange={e => onChange(v => ({ ...v, sort_order: e.target.value }))} style={{ ...inputStyle, width: '120px' }} />
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={onSave} disabled={saving || !value.name?.trim()} style={btnSave}>{saving ? 'Saving…' : value.id ? 'Save changes' : 'Add group'}</button>
-        <button onClick={onCancel} style={btnCancel}>Cancel</button>
+        <Button onClick={onSave} disabled={saving || !value.name?.trim()}>{saving ? 'Saving…' : value.id ? 'Save changes' : 'Add group'}</Button>
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   )
@@ -686,8 +710,8 @@ function ItemForm({ value, groups, onChange, onSave, onCancel, saving }) {
         Exclude from generated specification
       </label>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={onSave} disabled={saving || !value.name?.trim()} style={btnSave}>{saving ? 'Saving…' : value.id ? 'Save changes' : 'Add item'}</button>
-        <button onClick={onCancel} style={btnCancel}>Cancel</button>
+        <Button onClick={onSave} disabled={saving || !value.name?.trim()}>{saving ? 'Saving…' : value.id ? 'Save changes' : 'Add item'}</Button>
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   )
@@ -729,33 +753,43 @@ function ErrorMsg({ msg, onClose }) {
 }
 
 const inputStyle = {
-  padding: '8px 10px', border: `1px solid #D0CEC6`, borderRadius: '7px',
-  fontSize: '13px', fontFamily: 'inherit', outline: 'none', background: '#fff',
-  color: '#1a1a1a', width: '100%', boxSizing: 'border-box',
+  padding: '9px 12px',
+  border: `1px solid ${BORDER}`,
+  borderRadius: '7px',
+  fontSize: '14px',
+  fontFamily: 'inherit',
+  outline: 'none',
+  background: '#fff',
+  color: '#1a1a1a',
+  width: '100%',
+  boxSizing: 'border-box',
 }
 
 const btnPrimary = {
-  display: 'inline-flex', alignItems: 'center', gap: '6px',
-  padding: '7px 14px', background: NAVY, color: '#fff',
-  border: 'none', borderRadius: '8px', fontSize: '12px',
-  fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '8px 16px',
+  background: NAVY,
+  color: '#fff',
+  border: 'none',
+  borderRadius: '8px',
+  fontSize: '13px',
+  fontWeight: '500',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
 }
 
 const btnSecondary = {
-  display: 'inline-flex', alignItems: 'center', gap: '6px',
-  padding: '7px 14px', background: 'transparent', color: '#666',
-  border: `1px solid #D0CEC6`, borderRadius: '8px', fontSize: '12px',
-  cursor: 'pointer', fontFamily: 'inherit',
-}
-
-const btnSave = {
-  padding: '7px 16px', background: NAVY, color: '#fff',
-  border: 'none', borderRadius: '7px', fontSize: '13px',
-  fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
-}
-
-const btnCancel = {
-  padding: '7px 16px', background: 'transparent', color: '#666',
-  border: `1px solid #D0CEC6`, borderRadius: '7px', fontSize: '13px',
-  cursor: 'pointer', fontFamily: 'inherit',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '8px 16px',
+  background: 'transparent',
+  color: '#555',
+  border: `1px solid ${BORDER}`,
+  borderRadius: '8px',
+  fontSize: '13px',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
 }

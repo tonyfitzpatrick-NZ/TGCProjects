@@ -33,8 +33,9 @@ export default function DashboardPage() {
   }, [])
 
   const handleNewProject = () => {
-    navigate('/projects')
-  }
+  console.log("New Project button clicked");   // ← Check browser console
+  navigate('/projects');
+}
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>

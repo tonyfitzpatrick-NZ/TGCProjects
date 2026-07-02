@@ -64,19 +64,26 @@ export default function Layout({ children }) {
       <div style={{ width: '210px', flexShrink: 0, background: NAVY, display: 'flex', flexDirection: 'column' }}>
 
         {/* Logo */}
-        <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 12px', display: 'inline-flex', alignItems: 'center' }}>
-            <img src={logo} alt="TGC Homes" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
-          </div>
-          <div style={{ fontSize: '11px', color: GOLD, marginTop: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '500' }}>
-            Project Portal
-          </div>
-        </div>
+<div 
+  onClick={() => navigate('/')}
+  style={{ 
+    padding: '16px 16px 14px', 
+    borderBottom: '1px solid rgba(255,255,255,0.08)',
+    cursor: 'pointer'
+  }}
+>
+  <div style={{ background: '#fff', borderRadius: '10px', padding: '8px 12px', display: 'inline-flex', alignItems: 'center' }}>
+    <img src={logo} alt="TGC Homes" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
+  </div>
+  <div style={{ fontSize: '11px', color: GOLD, marginTop: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '500' }}>
+    Project Portal
+  </div>
+</div>
 
         {/* Nav */}
         <div style={{ flex: 1, paddingTop: '8px', overflowY: 'auto' }}>
           <SectionLabel>Workspace</SectionLabel>
-          <NavItem icon={LayoutGrid} label="All Projects" path="/" />
+          <NavItem icon={LayoutGrid} label="All Projects" path="/projects" />
           <NavItem icon={CheckSquare} label="Tasks" path="/tasks" showBadge={hasNewTasks} />
           <NavItem icon={Clock} label="Deadlines" path="/deadlines" />
           <NavItem icon={Bell} label="Notifications" path="/notifications" showBadge={hasNewMessages} />

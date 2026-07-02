@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ToastProvider } from './components/Toast/ToastContext'   // ← Added
+import DashboardPage from './pages/DashboardPage'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import ProjectsPage from './pages/ProjectsPage'
@@ -39,7 +40,7 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<ProjectsPage />} />
+                    <Route path="/" element={<DashboardPage />} />
                     <Route path="/projects/:id" element={<ProjectDetailPage />} />
                     <Route path="/deadlines" element={<DeadlinesPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />

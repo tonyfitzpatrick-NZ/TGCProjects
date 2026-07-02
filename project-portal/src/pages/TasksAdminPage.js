@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { TASK_STATUSES, TASK_STATUS_COLORS, STAGES } from '../lib/constants'
-import { Search, AlertTriangle, Clock, Link2, ChevronRight } from 'lucide-react'
+import { Search, AlertTriangle, Clock, Link2, ChevronRight, Plus } from 'lucide-react'
 import { format, isPast, differenceInDays, parseISO } from 'date-fns'
+import CreateTaskModal from '../components/common/CreateTaskModal'   // ← Add this import
 
 export default function TasksAdminPage() {
   const [tasks, setTasks] = useState([])
@@ -13,11 +14,20 @@ export default function TasksAdminPage() {
   const [filterStage, setFilterStage] = useState('All')
   const [sortBy, setSortBy] = useState('deadline')
   const [fetchError, setFetchError] = useState(null)
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)   // ← Add this state
   const navigate = useNavigate()
 
   useEffect(() => { fetchTasks() }, [])
 
   async function fetchTasks() {
+    // ... (keep your existing fetchTasks function unchanged)
+  }
+
+  // Add this new function to refresh tasks after creating one
+  const handleTaskCreated = () => {
+    setShowCreateTaskModal(false)
+    fetchTasks()   // Refresh the list
+  }
     setLoading(true)
     const { data, error } = await supabase.from('tasks')
       .select('*, projects(id,name,code,stage), assigned_company:companies(id,name,discipline), assigned_user:profiles!tasks_assigned_user_id_fkey(id,full_name)')
@@ -94,14 +104,25 @@ export default function TasksAdminPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={S.topbar}>
-        <div style={S.title}>All Tasks</div>
-        <div style={S.searchWrap}>
-          <Search size={13} color="#aaa" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
-          <input style={S.searchInput} placeholder="Search tasks, projects, companies…" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-      </div>
+    <div style={S.topbar}>
+  <div style={S.title}>All Tasks</div>
+
+  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <Button onClick={() => setShowCreateTaskModal(true)}>
+      <Plus size={16} /> New Task
+    </Button>
+
+    <div style={S.searchWrap}>
+      <Search size={13} color="#aaa" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
+      <input 
+        style={S.searchInput} 
+        placeholder="Search tasks, projects, companies…" 
+        value={search} 
+        onChange={e => setSearch(e.target.value)} 
+      />
+    </div>
+  </div>
+</div>
 
       {fetchError && (
         <div style={{
@@ -207,6 +228,11 @@ export default function TasksAdminPage() {
           </table>
         )}
       </div>
+      <CreateTaskModal
+  isOpen={showCreateTaskModal}
+  onClose={() => setShowCreateTaskModal(false)}
+  onTaskCreated={handleTaskCreated}
+/>
     </div>
   )
 }

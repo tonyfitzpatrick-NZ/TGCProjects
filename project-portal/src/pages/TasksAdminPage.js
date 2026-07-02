@@ -57,6 +57,24 @@ export default function TasksAdminPage() {
     fetchTasks()
   }
 
+  // Quick status change from the table
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId)
+
+      if (!error) {
+        fetchTasks() // Refresh list after update
+      } else {
+        console.error('Error updating status:', error)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   const hasActiveFilters = search || filterStatus !== 'All' || filterStage !== 'All'
 
   const clearFilters = () => {
@@ -218,18 +236,15 @@ export default function TasksAdminPage() {
         {hasActiveFilters && <span style={{ color: '#aaa' }}> (filtered)</span>}
       </div>
 
-      {/* Table + Empty State */}
+      {/* Table */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
         {loading ? (
           <div style={S.empty}>Loading tasks…</div>
         ) : sorted.length === 0 ? (
-          // Improved Empty State
           <div style={{ padding: '60px 20px', textAlign: 'center', color: '#666' }}>
             {tasks.length === 0 ? (
               <div>
-                <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>
-                  No tasks yet
-                </p>
+                <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>No tasks yet</p>
                 <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
                   Get started by creating your first task.
                 </p>
@@ -239,15 +254,11 @@ export default function TasksAdminPage() {
               </div>
             ) : (
               <div>
-                <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>
-                  No tasks match your filters
-                </p>
+                <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>No tasks match your filters</p>
                 <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
                   Try adjusting your search or filters.
                 </p>
-                <Button variant="secondary" onClick={clearFilters}>
-                  Clear filters
-                </Button>
+                <Button variant="secondary" onClick={clearFilters}>Clear filters</Button>
               </div>
             )}
           </div>
@@ -265,31 +276,65 @@ export default function TasksAdminPage() {
                 const tc = TASK_STATUS_COLORS[task.status] || TASK_STATUS_COLORS['Open']
                 const dl = dlBadge(task.deadline)
                 const depBlocked = task.depends_on_task && task.depends_on_task.status !== 'Completed'
+
                 return (
                   <tr key={task.id} style={{ cursor: 'pointer' }}
                     onClick={() => navigate(`/projects/${task.projects?.id}?tab=tasks`)}
                     onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
                     <td style={S.td}>
                       <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         {task.title}
                         {depBlocked && <Link2 size={11} color="#993C1D" title={`Blocked by: ${task.depends_on_task.title}`} />}
                       </div>
-                      {task.description && <div style={{ fontSize: '11px', color: '#bbb', marginTop: '2px', maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.description}</div>}
+                      {task.description && (
+                        <div style={{ fontSize: '11px', color: '#bbb', marginTop: '2px', maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {task.description}
+                        </div>
+                      )}
                     </td>
+
                     <td style={S.td}>
                       <div style={{ fontSize: '12px', fontWeight: '500', color: '#1a1a1a' }}>{task.projects?.name}</div>
                       <div style={{ fontSize: '11px', color: '#bbb' }}>{task.projects?.code}</div>
                     </td>
+
                     <td style={S.td}>
                       <div style={{ fontSize: '12px', color: '#444' }}>{task.assigned_company?.name || '—'}</div>
                       {task.assigned_user && <div style={{ fontSize: '11px', color: '#aaa' }}>→ {task.assigned_user.full_name}</div>}
                     </td>
-                    <td style={S.td}><span style={{ fontSize: '11px', color: '#888' }}>{task.stage || task.projects?.stage || '—'}</span></td>
+
                     <td style={S.td}>
-                      <span style={{ ...S.badge, background: tc.bg, color: tc.color }}>{task.status}</span>
+                      <span style={{ fontSize: '11px', color: '#888' }}>{task.stage || task.projects?.stage || '—'}</span>
                     </td>
-                    <td style={S.td}><span style={{ fontSize: '12px', color: '#888' }}>{task.hours_allowed ? `${task.hours_allowed}h` : '—'}</span></td>
+
+                    {/* Quick Status Change */}
+                    <td style={S.td} onClick={e => e.stopPropagation()}>
+                      <select
+                        value={task.status}
+                        onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '20px',
+                          border: 'none',
+                          background: tc.bg,
+                          color: tc.color,
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {TASK_STATUSES.map(status => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                    </td>
+
+                    <td style={S.td}>
+                      <span style={{ fontSize: '12px', color: '#888' }}>{task.hours_allowed ? `${task.hours_allowed}h` : '—'}</span>
+                    </td>
+
                     <td style={S.td}>
                       {dl ? (
                         <span style={{ fontSize: '12px', color: dl.color, display: 'flex', alignItems: 'center', gap: '3px', fontWeight: dl.color !== '#888' ? '500' : '400' }}>
@@ -297,6 +342,7 @@ export default function TasksAdminPage() {
                         </span>
                       ) : <span style={{ fontSize: '12px', color: '#ccc' }}>—</span>}
                     </td>
+
                     <td style={{ ...S.td, color: '#ccc' }}><ChevronRight size={14} /></td>
                   </tr>
                 )

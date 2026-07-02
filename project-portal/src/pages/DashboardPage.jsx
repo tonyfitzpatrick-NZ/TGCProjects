@@ -380,7 +380,7 @@ export default function DashboardPage() {
       />
 
       <NewProjectModal
-  isOpen={showNewProjectModal}
+  isOpen={false}                    // ← Force it to stay closed
   onClose={() => setShowNewProjectModal(false)}
   onProjectCreated={() => setShowNewProjectModal(false)}
 />

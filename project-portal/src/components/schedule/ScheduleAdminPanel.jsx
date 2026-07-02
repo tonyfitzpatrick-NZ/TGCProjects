@@ -1,10 +1,10 @@
 // ============================================================
 // src/components/schedule/ScheduleAdminPanel.jsx
-// Full version with ConfirmModal + FormField + Button + CBI
+// Full version with EmptyState component + ConfirmModal + FormField + Button
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Edit2, Check, X, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X, ChevronDown, ChevronRight, FolderOpen, Package } from 'lucide-react'
 import {
   fetchGroups,
   fetchItemsWithProducts,
@@ -19,6 +19,7 @@ import { useToast } from '../Toast/ToastContext'
 import FormField from '../common/FormField'
 import Button from '../common/Button'
 import ConfirmModal from '../common/ConfirmModal'
+import EmptyState from '../common/EmptyState'
 
 const NAVY   = '#1B2B4B'
 const GOLD   = '#B8952A'
@@ -40,7 +41,6 @@ export default function ScheduleAdminPanel() {
 
   const { showToast } = useToast()
 
-  // Confirm Modal State
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -113,7 +113,6 @@ export default function ScheduleAdminPanel() {
         />
       )}
 
-      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
@@ -291,7 +290,15 @@ function GroupsTab({ groups, items, products, reload, setError, showToast, setCo
         <GroupForm value={editGroup} onChange={setEditGroup} onSave={saveGroup} onCancel={() => setEditGroup(null)} saving={saving} />
       )}
 
-      {groups.length === 0 && !editGroup && <EmptyMsg>No groups yet. Add your first group above.</EmptyMsg>}
+      {groups.length === 0 && !editGroup && (
+        <EmptyState
+          icon={<FolderOpen size={48} />}
+          title="No groups yet"
+          description="Create your first group to start building your Schedule of Finishes library."
+          actionLabel="Add Group"
+          onAction={() => setEditGroup({ name: '', description: '', sort_order: 0 })}
+        />
+      )}
 
       {groups.map(group => {
         const groupItems = sortItems(items.filter(i => i.group_id === group.id))
@@ -319,6 +326,12 @@ function GroupsTab({ groups, items, products, reload, setError, showToast, setCo
 
             {isGroupOpen && (
               <div style={{ padding: '8px 14px 14px 28px' }}>
+                {groupItems.length === 0 && (
+                  <div style={{ padding: '20px 0', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>
+                    No items in this group yet.
+                  </div>
+                )}
+
                 {groupItems.map(item => {
                   const isItemOpen = !!expandedItem[item.id]
                   const assignedMap = {}
@@ -546,7 +559,15 @@ function ProductsTab({ groups, items, products, reload, setError, showToast, set
         <ProductForm value={editing} items={items} groups={groups} cbiCategories={cbiCategories} onChange={setEditing} onSave={saveProduct} onCancel={() => setEditing(null)} saving={saving} />
       )}
 
-      {products.length === 0 && !editing && <EmptyMsg>No products yet. Add your first product above.</EmptyMsg>}
+      {products.length === 0 && !editing && (
+        <EmptyState
+          icon={<Package size={48} />}
+          title="No products yet"
+          description="Add your first product to start building your library."
+          actionLabel="Add Product"
+          onAction={() => setEditing({ name: '', manufacturer: '', is_active: true, needs_own_spec_section: false, assignedItemIds: [] })}
+        />
+      )}
 
       {items.map(item => {
         const itemProducts = (productsByItem[item.id] || []).filter(p => showAll || p.is_active)
@@ -588,7 +609,7 @@ function ProductsTab({ groups, items, products, reload, setError, showToast, set
   )
 }
 
-// ProductForm (already updated with FormField + Button)
+// ProductForm
 function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSave, onCancel, saving }) {
   function toggleItemAssignment(itemId) {
     onChange(v => {
@@ -760,7 +781,6 @@ function IconBtn({ icon, onClick, title, danger }) {
 }
 
 function LoadingMsg() { return <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>Loading…</div> }
-function EmptyMsg({ children }) { return <div style={{ padding: '32px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{children}</div> }
 function ErrorMsg({ msg, onClose }) {
   return <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#FAECE7', color: '#993C1D', borderRadius: '8px', marginBottom: '14px', fontSize: '13px' }}>
     <span style={{ flex: 1 }}>{msg}</span>

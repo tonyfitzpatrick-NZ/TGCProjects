@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import Button from '../components/common/Button'
 import { Link } from 'react-router-dom'
 
+const NAVY = '#1B2B4B'
+
 export default function DashboardPage() {
   const [activeProjects, setActiveProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
@@ -69,7 +71,17 @@ export default function DashboardPage() {
           <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>
             Active Projects
           </h2>
-          <Link to="/projects" style={{ fontSize: '14px', color: NAVY, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Link 
+            to="/projects" 
+            style={{ 
+              fontSize: '14px', 
+              color: NAVY, 
+              textDecoration: 'none', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px' 
+            }}
+          >
             View all <ArrowRight size={16} />
           </Link>
         </div>
@@ -145,7 +157,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Other Widgets (Placeholders for now) */}
+      {/* Other Widgets (Placeholders) */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 

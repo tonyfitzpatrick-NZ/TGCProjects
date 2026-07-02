@@ -18,11 +18,15 @@ export default function DashboardPage() {
         const { data, error } = await supabase
           .from('projects')
           .select('id, name, status, client_name, location, updated_at')
-          .in('status', ['active', 'in_progress', 'planning'])
+          .in('status', ['Active', 'In Progress', 'Planning'])   // ← Fixed capitalisation
           .order('updated_at', { ascending: false })
           .limit(6)
 
-        if (!error) setActiveProjects(data || [])
+        if (!error) {
+          setActiveProjects(data || [])
+        } else {
+          console.error('Supabase error:', error)
+        }
       } catch (err) {
         console.error(err)
       } finally {
@@ -33,9 +37,8 @@ export default function DashboardPage() {
   }, [])
 
   const handleNewProject = () => {
-  console.log("New Project button clicked");   // ← Check browser console
-  navigate('/projects');
-}
+    navigate('/projects')
+  }
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>

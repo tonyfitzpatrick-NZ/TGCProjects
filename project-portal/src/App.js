@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
-import { ToastProvider } from './components/Toast/ToastContext'   // ← Added
-import DashboardPage from './pages/DashboardPage'
+import { ToastProvider } from './components/Toast/ToastContext'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import DeadlinesPage from './pages/DeadlinesPage'
@@ -32,16 +32,23 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider>           {/* ← Added ToastProvider here */}
+      <ToastProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            
             <Route path="/*" element={
               <ProtectedRoute>
                 <Layout>
                   <Routes>
+                    {/* Main Landing Page */}
                     <Route path="/" element={<DashboardPage />} />
+
+                    {/* Projects */}
+                    <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/projects/:id" element={<ProjectDetailPage />} />
+
+                    {/* Other Pages */}
                     <Route path="/deadlines" element={<DeadlinesPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/uploads" element={<UploadsPage />} />
@@ -54,8 +61,9 @@ function App() {
                     <Route path="/admin/applications" element={<AdminApplicationTemplatesPage />} />
                     <Route path="/admin/backup" element={<BackupExportPage />} />
                     <Route path="/admin/specification-builder" element={<SpecificationBuilderPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/admin/schedule" element={<AdminSchedulePage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Layout>

@@ -3,6 +3,8 @@ import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import Button from './Button'
 
+const NAVY = '#1B2B4B'
+
 export default function CreateTaskModal({ isOpen, onClose, projectId = null, onTaskCreated }) {
   const [formData, setFormData] = useState({
     title: '',

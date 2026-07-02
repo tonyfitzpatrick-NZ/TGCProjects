@@ -379,7 +379,11 @@ export default function DashboardPage() {
         onTaskCreated={() => setShowCreateTaskModal(false)}
       />
 
-      
+      <NewProjectModal
+  isOpen={showNewProjectModal}
+  onClose={() => setShowNewProjectModal(false)}
+  onProjectCreated={() => setShowNewProjectModal(false)}
+/>
     </div>
   )
 }

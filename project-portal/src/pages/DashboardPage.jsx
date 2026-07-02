@@ -3,6 +3,7 @@ import { Plus, Calendar, CheckSquare, Bell, Activity, ArrowRight, MessageCircle 
 import { supabase } from '../lib/supabase'
 import Button from '../components/common/Button'
 import { Link, useNavigate } from 'react-router-dom'
+import CreateTaskModal from '../components/common/CreateTaskModal'
 
 const NAVY = '#1B2B4B'
 
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [loadingDeadlines, setLoadingDeadlines] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(true)
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
   const navigate = useNavigate()
 
   const [userId, setUserId] = useState(null)
@@ -148,7 +150,9 @@ export default function DashboardPage() {
   }, [userId])
 
   const handleNewProject = () => navigate('/projects')
-  const handleNewTask = () => navigate('/tasks')
+ const handleNewTask = () => {
+  setShowCreateTaskModal(true)
+}
   const handleViewMessages = () => navigate('/notifications')
 
   return (
@@ -368,6 +372,15 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+      <CreateTaskModal
+  isOpen={showCreateTaskModal}
+  onClose={() => setShowCreateTaskModal(false)}
+  onTaskCreated={() => {
+    // Refresh tasks and deadlines after creating a new task
+    setShowCreateTaskModal(false)
+    // You can add functions here later to re-fetch myTasks and upcomingDeadlines if needed
+  }}
+/>
     </div>
   )
 }

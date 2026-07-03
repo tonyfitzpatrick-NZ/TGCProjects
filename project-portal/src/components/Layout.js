@@ -18,8 +18,8 @@ export default function Layout({ children }) {
   const location = useLocation()
   const { hasNewMessages, hasNewTasks, markSeen } = useNavBadges(profile?.id)
 
-  const isAdmin = profile?.role === 'admin'
-  const isLead = isAdmin || profile?.role === 'project_lead'
+  const isAdmin = ['system_admin', 'admin'].includes(profile?.role)
+const isLead = isAdmin || profile?.role === 'project_lead'
   const initials = profile?.avatar_initials ||
     profile?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
 

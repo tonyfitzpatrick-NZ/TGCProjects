@@ -27,6 +27,8 @@ export default function AdminUsersPage() {
 
   const userRole = profile?.role
   const hasFullAccess = FULL_USER_MANAGEMENT_ROLES.includes(userRole)
+  console.log("Current user role from profile:", userRole);
+console.log("Has full access?", hasFullAccess);
   const isTeamLead = TEAM_MANAGEMENT_ROLES.includes(userRole)
 
   // Access Control

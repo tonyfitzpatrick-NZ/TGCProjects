@@ -26,6 +26,9 @@ export default function AdminUsersPage() {
   const [editingCompany, setEditingCompany] = useState(null)
 
   const userRole = profile?.role
+  console.log("=== DEBUG ROLE ===");
+console.log("userRole value:", userRole);
+console.log("hasFullAccess:", hasFullAccess);
   const hasFullAccess = FULL_USER_MANAGEMENT_ROLES.includes(userRole)
   console.log("Current user role from profile:", userRole);
 console.log("Has full access?", hasFullAccess);

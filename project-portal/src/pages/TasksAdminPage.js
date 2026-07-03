@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { TASK_STATUSES, TASK_STATUS_COLORS, STAGES } from '../lib/constants'
-import { Search, AlertTriangle, Clock, Link2, ChevronRight, Plus, X } from 'lucide-react'
+import { Search, AlertTriangle, Clock, Link2, ChevronRight, Plus, X, Trash2 } from 'lucide-react'
 import { format, isPast, differenceInDays, parseISO } from 'date-fns'
 import CreateTaskModal from '../components/common/CreateTaskModal'
 import Button from '../components/common/Button'
@@ -57,7 +57,6 @@ export default function TasksAdminPage() {
     fetchTasks()
   }
 
-  // Quick status change from the table
   const handleStatusChange = async (taskId, newStatus) => {
     try {
       const { error } = await supabase
@@ -65,11 +64,19 @@ export default function TasksAdminPage() {
         .update({ status: newStatus })
         .eq('id', taskId)
 
-      if (!error) {
-        fetchTasks() // Refresh list after update
-      } else {
-        console.error('Error updating status:', error)
-      }
+      if (!error) fetchTasks()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleDeleteTask = async (taskId, e) => {
+    e.stopPropagation()
+    if (!confirm('Delete this task?')) return
+
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+      if (!error) fetchTasks()
     } catch (err) {
       console.error(err)
     }
@@ -92,14 +99,12 @@ export default function TasksAdminPage() {
 
     const matchStatus = filterStatus === 'All' || t.status === filterStatus
     const matchStage = filterStage === 'All' || t.stage === filterStage || t.projects?.stage === filterStage
-
     return matchSearch && matchStatus && matchStage
   })
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'deadline') {
-      if (!a.deadline) return 1
-      if (!b.deadline) return -1
+      if (!a.deadline) return 1; if (!b.deadline) return -1
       return new Date(a.deadline) - new Date(b.deadline)
     }
     if (sortBy === 'status') return TASK_STATUSES.indexOf(a.status) - TASK_STATUSES.indexOf(b.status)
@@ -112,10 +117,8 @@ export default function TasksAdminPage() {
     if (!deadline) return null
     const d = parseISO(deadline)
     const days = differenceInDays(d, new Date())
-    if (isPast(d) && days < 0)
-      return { color: '#A32D2D', label: `Overdue · ${format(d, 'd MMM')}`, Icon: AlertTriangle }
-    if (days <= 7)
-      return { color: '#854F0B', label: `${format(d, 'd MMM')} · ${days}d`, Icon: Clock }
+    if (isPast(d) && days < 0) return { color: '#A32D2D', label: `Overdue · ${format(d, 'd MMM')}`, Icon: AlertTriangle }
+    if (days <= 7) return { color: '#854F0B', label: `${format(d, 'd MMM')} · ${days}d`, Icon: Clock }
     return { color: '#888', label: format(d, 'd MMM yyyy'), Icon: null }
   }
 
@@ -140,35 +143,21 @@ export default function TasksAdminPage() {
 
           <div style={S.searchWrap}>
             <Search size={13} color="#aaa" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              style={S.searchInput}
-              placeholder="Search tasks, projects, companies…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+            <input style={S.searchInput} placeholder="Search tasks, projects, companies…" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
       </div>
 
       {fetchError && (
-        <div style={{
-          background: '#FAECE7', color: '#993C1D', fontSize: '12px',
-          padding: '10px 20px', fontFamily: 'monospace', lineHeight: '1.6',
-          wordBreak: 'break-word'
-        }}>
+        <div style={{ background: '#FAECE7', color: '#993C1D', fontSize: '12px', padding: '10px 20px', fontFamily: 'monospace' }}>
           {fetchError}
         </div>
       )}
 
       {/* Stats bar */}
       <div style={{ padding: '10px 20px', borderBottom: '0.5px solid #ECEAE4', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-        {[
-          ['Total', stats.total, '#666'],
-          ['Open', stats.open, '#5F5E5A'],
-          ['In Progress', stats.inProgress, '#185FA5'],
-          ['For Review', stats.forReview, '#854F0B'],
-          ['Completed', stats.completed, '#0F6E56'],
-          ['Overdue', stats.overdue, '#A32D2D']
+        {[['Total', stats.total, '#666'], ['Open', stats.open, '#5F5E5A'], ['In Progress', stats.inProgress, '#185FA5'],
+          ['For Review', stats.forReview, '#854F0B'], ['Completed', stats.completed, '#0F6E56'], ['Overdue', stats.overdue, '#A32D2D']
         ].map(([label, count, color]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ fontSize: '18px', fontWeight: '600', color }}>{count}</span>
@@ -182,18 +171,7 @@ export default function TasksAdminPage() {
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <span style={{ fontSize: '11px', color: '#bbb' }}>Status:</span>
           {['All', ...TASK_STATUSES].map(s => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              style={{
-                ...S.chip,
-                background: filterStatus === s ? '#1B2B4B' : 'transparent',
-                color: filterStatus === s ? '#fff' : '#666',
-                border: `0.5px solid ${filterStatus === s ? '#1B2B4B' : '#D0CEC6'}`
-              }}
-            >
-              {s}
-            </button>
+            <button key={s} onClick={() => setFilterStatus(s)} style={{ ...S.chip, background: filterStatus === s ? '#1B2B4B' : 'transparent', color: filterStatus === s ? '#fff' : '#666', border: `0.5px solid ${filterStatus === s ? '#1B2B4B' : '#D0CEC6'}` }}>{s}</button>
           ))}
         </div>
 
@@ -206,15 +184,7 @@ export default function TasksAdminPage() {
         </div>
 
         {hasActiveFilters && (
-          <button
-            onClick={clearFilters}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '4px',
-              padding: '4px 10px', borderRadius: '20px', fontSize: '11px',
-              background: 'transparent', color: '#666', border: '0.5px solid #D0CEC6',
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}
-          >
+          <button onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', background: 'transparent', color: '#666', border: '0.5px solid #D0CEC6', cursor: 'pointer' }}>
             <X size={12} /> Clear filters
           </button>
         )}
@@ -245,26 +215,20 @@ export default function TasksAdminPage() {
             {tasks.length === 0 ? (
               <div>
                 <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>No tasks yet</p>
-                <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
-                  Get started by creating your first task.
-                </p>
-                <Button onClick={() => setShowCreateTaskModal(true)}>
-                  <Plus size={16} /> Create your first task
-                </Button>
+                <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>Get started by creating your first task.</p>
+                <Button onClick={() => setShowCreateTaskModal(true)}><Plus size={16} /> Create your first task</Button>
               </div>
             ) : (
               <div>
                 <p style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>No tasks match your filters</p>
-                <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
-                  Try adjusting your search or filters.
-                </p>
+                <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>Try adjusting your search or filters.</p>
                 <Button variant="secondary" onClick={clearFilters}>Clear filters</Button>
               </div>
             )}
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px' }}>
-            <thead>
+            <thead style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
               <tr>
                 {['Task', 'Project', 'Assigned to', 'Stage', 'Status', 'Hours', 'Deadline', ''].map(h => (
                   <th key={h} style={S.th}>{h}</th>
@@ -288,11 +252,7 @@ export default function TasksAdminPage() {
                         {task.title}
                         {depBlocked && <Link2 size={11} color="#993C1D" title={`Blocked by: ${task.depends_on_task.title}`} />}
                       </div>
-                      {task.description && (
-                        <div style={{ fontSize: '11px', color: '#bbb', marginTop: '2px', maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {task.description}
-                        </div>
-                      )}
+                      {task.description && <div style={{ fontSize: '11px', color: '#bbb', marginTop: '2px', maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.description}</div>}
                     </td>
 
                     <td style={S.td}>
@@ -305,35 +265,20 @@ export default function TasksAdminPage() {
                       {task.assigned_user && <div style={{ fontSize: '11px', color: '#aaa' }}>→ {task.assigned_user.full_name}</div>}
                     </td>
 
-                    <td style={S.td}>
-                      <span style={{ fontSize: '11px', color: '#888' }}>{task.stage || task.projects?.stage || '—'}</span>
-                    </td>
+                    <td style={S.td}><span style={{ fontSize: '11px', color: '#888' }}>{task.stage || task.projects?.stage || '—'}</span></td>
 
                     {/* Quick Status Change */}
                     <td style={S.td} onClick={e => e.stopPropagation()}>
                       <select
                         value={task.status}
                         onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                        style={{
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          borderRadius: '20px',
-                          border: 'none',
-                          background: tc.bg,
-                          color: tc.color,
-                          fontWeight: '500',
-                          cursor: 'pointer'
-                        }}
+                        style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', border: 'none', background: tc.bg, color: tc.color, fontWeight: '500', cursor: 'pointer' }}
                       >
-                        {TASK_STATUSES.map(status => (
-                          <option key={status} value={status}>{status}</option>
-                        ))}
+                        {TASK_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
                       </select>
                     </td>
 
-                    <td style={S.td}>
-                      <span style={{ fontSize: '12px', color: '#888' }}>{task.hours_allowed ? `${task.hours_allowed}h` : '—'}</span>
-                    </td>
+                    <td style={S.td}><span style={{ fontSize: '12px', color: '#888' }}>{task.hours_allowed ? `${task.hours_allowed}h` : '—'}</span></td>
 
                     <td style={S.td}>
                       {dl ? (
@@ -343,7 +288,14 @@ export default function TasksAdminPage() {
                       ) : <span style={{ fontSize: '12px', color: '#ccc' }}>—</span>}
                     </td>
 
-                    <td style={{ ...S.td, color: '#ccc' }}><ChevronRight size={14} /></td>
+                    {/* Hover Actions */}
+                    <td style={{ ...S.td, color: '#ccc', width: '40px' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', opacity: 0.6 }}>
+                        <button onClick={(e) => handleDeleteTask(task.id, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                          <Trash2 size={15} color="#A32D2D" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
@@ -352,7 +304,6 @@ export default function TasksAdminPage() {
         )}
       </div>
 
-      {/* Create Task Modal */}
       <CreateTaskModal
         isOpen={showCreateTaskModal}
         onClose={() => setShowCreateTaskModal(false)}
@@ -369,7 +320,7 @@ const S = {
   searchInput: { padding: '7px 10px 7px 28px', border: '0.5px solid #D0CEC6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#FAFAF8', fontFamily: 'inherit', color: '#1a1a1a', width: '260px' },
   chip: { padding: '4px 12px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s' },
   select: { padding: '5px 10px', border: '0.5px solid #D0CEC6', borderRadius: '7px', fontSize: '12px', background: '#FAFAF8', fontFamily: 'inherit', color: '#444' },
-  th: { textAlign: 'left', fontSize: '10px', fontWeight: '500', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '10px 10px 6px', borderBottom: '0.5px solid #ECEAE4' },
+  th: { textAlign: 'left', fontSize: '10px', fontWeight: '500', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '10px 10px 6px', borderBottom: '0.5px solid #ECEAE4', background: '#fff' },
   td: { padding: '10px', borderBottom: '0.5px solid #F3F1EB', verticalAlign: 'middle' },
   badge: { display: 'inline-block', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: '500' },
   empty: { padding: '60px', textAlign: 'center', color: '#aaa', fontSize: '14px' }

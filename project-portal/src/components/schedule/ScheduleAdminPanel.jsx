@@ -460,7 +460,7 @@ function ProductsTab({ groups, items, products, reload, setError, showToast, set
   }, [])
 
   const EMPTY = {
-    name: '', manufacturer: '', url_website: '', url_branz_appraisal: '', url_codemark: '', url_install_manual: '',
+    name: '', manufacturer: '', url_website: '', url_branz_appraisal: '', url_bpi_sheet: '', url_codemark: '', url_install_manual: '',
     is_active: true, needs_own_spec_section: false, assignedItemIds: [], cbi_category_id: null
   }
 
@@ -488,6 +488,7 @@ function ProductsTab({ groups, items, products, reload, setError, showToast, set
         manufacturer: editing.manufacturer || null,
         url_website: editing.url_website || null,
         url_branz_appraisal: editing.url_branz_appraisal || null,
+        url_bpi_sheet: editing.url_bpi_sheet || null,
         url_codemark: editing.url_codemark || null,
         url_install_manual: editing.url_install_manual || null,
         is_active: editing.is_active !== false,
@@ -649,6 +650,10 @@ function ProductForm({ value, items, groups, cbiCategories = [], onChange, onSav
 
       <FormField label="BRANZ Appraisal URL">
         <input placeholder="BRANZ Appraisal URL" value={value.url_branz_appraisal || ''} onChange={e => onChange(v => ({ ...v, url_branz_appraisal: e.target.value }))} style={inputStyle} />
+      </FormField>
+
+      <FormField label="Building Performance Information Sheet URL">
+        <input placeholder="Building Performance Information Sheet URL" value={value.url_bpi_sheet || ''} onChange={e => onChange(v => ({ ...v, url_bpi_sheet: e.target.value }))} style={inputStyle} />
       </FormField>
 
       <FormField label="CodeMark URL">

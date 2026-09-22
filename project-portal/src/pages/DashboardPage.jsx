@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Calendar, CheckSquare, Bell, Activity, ArrowRight, MessageCircle } from 'lucide-react'
+import { Plus, ArrowRight, MessageCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import Button from '../components/common/Button'
 import { Link, useNavigate } from 'react-router-dom'
@@ -32,19 +32,19 @@ export default function DashboardPage() {
     getUser()
   }, [])
 
-  // Fetch active projects
   useEffect(() => {
     const fetchActiveProjects = async () => {
       setLoadingProjects(true)
       try {
         const { data, error } = await supabase
           .from('projects')
-          .select('id, name, status, client_name, location, updated_at')
-          .in('status', ['Active', 'In Progress', 'Planning'])
+          .select('id, name, status, client_name, address, updated_at')
+          .eq('status', 'Active')
           .order('updated_at', { ascending: false })
           .limit(6)
 
         if (!error) setActiveProjects(data || [])
+        if (error) console.error('Error fetching projects:', error)
       } catch (err) {
         console.error(err)
       } finally {
@@ -54,7 +54,6 @@ export default function DashboardPage() {
     fetchActiveProjects()
   }, [])
 
-  // Fetch My Tasks
   useEffect(() => {
     if (!userId) return
 
@@ -72,11 +71,12 @@ export default function DashboardPage() {
             projects:project_id (name)
           `)
           .eq('assigned_user_id', userId)
-          .not('status', 'eq', 'done')
+          .not('status', 'eq', 'Completed')
           .order('deadline', { ascending: true, nullsFirst: false })
           .limit(6)
 
         if (!error) setMyTasks(data || [])
+        if (error) console.error('Error fetching tasks:', error)
       } catch (err) {
         console.error('Error fetching tasks:', err)
       } finally {
@@ -86,7 +86,6 @@ export default function DashboardPage() {
     fetchMyTasks()
   }, [userId])
 
-  // Fetch Upcoming Deadlines
   useEffect(() => {
     if (!userId) return
 
@@ -106,12 +105,13 @@ export default function DashboardPage() {
             projects:project_id (name)
           `)
           .eq('assigned_user_id', userId)
-          .not('status', 'eq', 'done')
+          .not('status', 'eq', 'Completed')
           .gte('deadline', today)
           .order('deadline', { ascending: true })
           .limit(6)
 
         if (!error) setUpcomingDeadlines(data || [])
+        if (error) console.error('Error fetching deadlines:', error)
       } catch (err) {
         console.error('Error fetching deadlines:', err)
       } finally {
@@ -121,7 +121,6 @@ export default function DashboardPage() {
     fetchUpcomingDeadlines()
   }, [userId])
 
-  // Fetch Recent Messages
   useEffect(() => {
     if (!userId) return
 
@@ -132,17 +131,18 @@ export default function DashboardPage() {
           .from('message_threads')
           .select(`
             id,
-            title,
+            subject,
             updated_at,
             project_id,
-            follow_up,
+            status,
             projects:project_id (name)
           `)
-          .eq('archived', false)
+          .neq('status', 'Archived')
           .order('updated_at', { ascending: false })
           .limit(6)
 
         if (!error) setRecentMessages(data || [])
+        if (error) console.error('Error fetching messages:', error)
       } catch (err) {
         console.error('Error fetching messages:', err)
       } finally {
@@ -157,7 +157,6 @@ export default function DashboardPage() {
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>
           Good afternoon
@@ -167,7 +166,6 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Quick Actions */}
       <div style={{ marginBottom: '32px' }}>
         <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#333', marginBottom: '12px' }}>
           Quick Actions
@@ -185,7 +183,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Active Projects */}
       <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>
@@ -199,7 +196,7 @@ export default function DashboardPage() {
         {loadingProjects ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Loading projects...</div>
         ) : activeProjects.length === 0 ? (
-          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
+          <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
             <p style={{ color: '#666', marginBottom: '16px' }}>You don't have any active projects yet.</p>
             <Button onClick={() => setShowNewProjectModal(true)}>Create your first project</Button>
           </div>
@@ -209,7 +206,7 @@ export default function DashboardPage() {
               <Link key={project.id} to={`/projects/${project.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
                   background: '#fff',
-                  border: `1px solid #ECEAE4`,
+                  border: '1px solid #ECEAE4',
                   borderRadius: '10px',
                   padding: '18px',
                   cursor: 'pointer'
@@ -218,7 +215,11 @@ export default function DashboardPage() {
                     {project.name}
                   </div>
                   {project.client_name && <div style={{ fontSize: '13px', color: '#666' }}>{project.client_name}</div>}
-                  {project.location && <div style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>{project.location}</div>}
+                  {project.address && (
+                    <div style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>
+                      {project.address}
+                    </div>
+                  )}
                   <div style={{
                     display: 'inline-block', fontSize: '12px', padding: '3px 10px',
                     borderRadius: '20px', background: '#E6F5EF', color: '#0F6E56', fontWeight: '500'
@@ -232,10 +233,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* My Tasks + Upcoming Deadlines */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-        
-        {/* My Tasks */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>My Tasks</h2>
@@ -245,15 +243,15 @@ export default function DashboardPage() {
           {loadingTasks ? (
             <div style={{ padding: '30px', textAlign: 'center', color: '#888' }}>Loading tasks...</div>
           ) : myTasks.length === 0 ? (
-            <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+            <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
               <p style={{ color: '#666', marginBottom: '12px' }}>No open tasks assigned to you.</p>
               <Button onClick={handleNewTask}>Create your first task</Button>
             </div>
           ) : (
-            <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: '12px', overflow: 'hidden' }}>
               {myTasks.map(task => (
                 <div key={task.id} onClick={() => navigate('/tasks')} style={{
-                  padding: '14px 20px', borderBottom: `1px solid #ECEAE4`, cursor: 'pointer',
+                  padding: '14px 20px', borderBottom: '1px solid #ECEAE4', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                 }}>
                   <div>
@@ -271,7 +269,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Upcoming Deadlines */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Upcoming Deadlines</h2>
@@ -281,14 +278,14 @@ export default function DashboardPage() {
           {loadingDeadlines ? (
             <div style={{ padding: '30px', textAlign: 'center', color: '#888' }}>Loading deadlines...</div>
           ) : upcomingDeadlines.length === 0 ? (
-            <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+            <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
               <p style={{ color: '#666', marginBottom: '12px' }}>No upcoming deadlines.</p>
             </div>
           ) : (
-            <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: '12px', overflow: 'hidden' }}>
               {upcomingDeadlines.map(task => (
                 <div key={task.id} onClick={() => navigate('/tasks')} style={{
-                  padding: '14px 20px', borderBottom: `1px solid #ECEAE4`, cursor: 'pointer',
+                  padding: '14px 20px', borderBottom: '1px solid #ECEAE4', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                 }}>
                   <div>
@@ -296,8 +293,8 @@ export default function DashboardPage() {
                     {task.projects?.name && <div style={{ fontSize: '12px', color: '#888' }}>{task.projects.name}</div>}
                   </div>
                   {task.deadline && (
-                    <div style={{ 
-                      fontSize: '13px', 
+                    <div style={{
+                      fontSize: '13px',
                       color: new Date(task.deadline) < new Date() ? '#E85D5D' : '#666',
                       fontWeight: new Date(task.deadline) < new Date() ? '500' : '400'
                     }}>
@@ -311,7 +308,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Messages Widget */}
       <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -324,43 +320,28 @@ export default function DashboardPage() {
         {loadingMessages ? (
           <div style={{ padding: '30px', textAlign: 'center', color: '#888' }}>Loading messages...</div>
         ) : recentMessages.length === 0 ? (
-          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+          <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
             <p style={{ color: '#666', marginBottom: '12px' }}>No active message threads.</p>
           </div>
         ) : (
-          <div style={{ background: '#fff', border: `1px solid #ECEAE4`, borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: '12px', overflow: 'hidden' }}>
             {recentMessages.map(thread => (
-              <div 
-                key={thread.id} 
+              <div
+                key={thread.id}
                 onClick={() => navigate(`/projects/${thread.project_id}`)}
                 style={{
                   padding: '14px 20px',
-                  borderBottom: `1px solid #ECEAE4`,
+                  borderBottom: '1px solid #ECEAE4',
                   cursor: 'pointer',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: thread.follow_up ? '#FFF8E6' : 'white'
+                  alignItems: 'center'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div>
-                    <div style={{ fontWeight: '500' }}>{thread.title}</div>
-                    {thread.projects?.name && (
-                      <div style={{ fontSize: '12px', color: '#888' }}>{thread.projects.name}</div>
-                    )}
-                  </div>
-                  {thread.follow_up && (
-                    <span style={{
-                      fontSize: '11px',
-                      padding: '1px 8px',
-                      borderRadius: '10px',
-                      background: '#FEE2C7',
-                      color: '#9F4F0A',
-                      fontWeight: '500'
-                    }}>
-                      Follow-up
-                    </span>
+                <div>
+                  <div style={{ fontWeight: '500' }}>{thread.subject}</div>
+                  {thread.projects?.name && (
+                    <div style={{ fontSize: '12px', color: '#888' }}>{thread.projects.name}</div>
                   )}
                 </div>
                 <div style={{ fontSize: '12px', color: '#888' }}>
@@ -372,7 +353,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Modals - Properly closed */}
       <CreateTaskModal
         isOpen={showCreateTaskModal}
         onClose={() => setShowCreateTaskModal(false)}
@@ -380,11 +360,14 @@ export default function DashboardPage() {
       />
 
       {showNewProjectModal && (
-  <NewProjectModal
-    onClose={() => setShowNewProjectModal(false)}
-    onCreated={() => setShowNewProjectModal(false)}
-  />
-)}
+        <NewProjectModal
+          onClose={() => setShowNewProjectModal(false)}
+          onCreated={() => {
+            setShowNewProjectModal(false)
+            window.location.reload()
+          }}
+        />
+      )}
     </div>
   )
 }

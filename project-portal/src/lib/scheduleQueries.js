@@ -37,7 +37,7 @@ export async function fetchItemsWithProducts() {
       *,
       sched_products (
         id, name, manufacturer,
-        url_website, url_branz_appraisal,
+        url_website, url_branz_appraisal, url_bpi_sheet,
         url_codemark, url_install_manual
       )
     `)
@@ -73,7 +73,7 @@ export async function fetchProducts({ includeInactive = false } = {}) {
 export async function fetchProjectSelections(projectId) {
   const { data, error } = await supabase
     .from('sched_project_selections')
-    .select('*, sched_products(id, name, manufacturer, url_website, url_branz_appraisal, url_codemark, url_install_manual)')
+    .select('*, sched_products(id, name, manufacturer, url_website, url_branz_appraisal, url_bpi_sheet, url_codemark, url_install_manual)')
     .eq('project_id', projectId)
   if (error) throw error
   const byItem = {}
@@ -105,7 +105,7 @@ export async function upsertProjectSelection({
       },
       { onConflict: 'project_id,item_id,product_id' }
     )
-    .select('*, sched_products(id, name, manufacturer, url_website, url_branz_appraisal, url_codemark, url_install_manual)')
+    .select('*, sched_products(id, name, manufacturer, url_website, url_branz_appraisal, url_bpi_sheet, url_codemark, url_install_manual)')
     .single()
   if (error) throw error
   return data
